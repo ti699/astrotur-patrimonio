@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CATEGORIAS, ESTADOS, estadoColor, formatBRL } from "@/lib/categorias";
 import { garantiaStatus, garantiaBadgeClass, diasParaVencer, getGarantiaFim } from "@/lib/garantias";
+import { ReportActions } from "@/components/ReportActions";
 import { Eye, Pencil, Trash2, Plus, Search, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,9 +91,20 @@ function List() {
           <h1 className="text-3xl font-bold">Patrimônios</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} {filtered.length === 1 ? "item" : "itens"} encontrados</p>
         </div>
-        <Button onClick={() => router.navigate({ to: "/patrimonios/novo" })} className="bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4 mr-2" /> Novo Cadastro
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <ReportActions title="Relatório completo de Patrimônios" filename="relatorio-patrimonios" rows={filtered.map((i) => ({
+            codigo: i.codigo, nome: i.nome, categoria: i.categoria, setor: i.setor?.nome ?? "—", responsavel: i.responsavel?.nome ?? "—",
+            estado: i.estado_conservacao, valor_aquisicao: i.valor_aquisicao, valor_atual: i.valor_atual, data_aquisicao: i.data_aquisicao ?? "—", localizacao: i.localizacao ?? "—",
+          }))} columns={[
+            { key: "codigo", label: "Código" }, { key: "nome", label: "Nome" }, { key: "categoria", label: "Categoria" },
+            { key: "setor", label: "Setor" }, { key: "responsavel", label: "Responsável" }, { key: "estado", label: "Estado" },
+            { key: "valor_aquisicao", label: "Valor aquisição", fmt: formatBRL }, { key: "valor_atual", label: "Valor atual", fmt: formatBRL },
+            { key: "data_aquisicao", label: "Aquisição" }, { key: "localizacao", label: "Localização" },
+          ]} />
+          <Button onClick={() => router.navigate({ to: "/patrimonios/novo" })} className="bg-primary hover:bg-primary/90">
+            <Plus className="h-4 w-4 mr-2" /> Novo Cadastro
+          </Button>
+        </div>
       </div>
 
       <Card className="p-4 bg-card border-border mb-4">

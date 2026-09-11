@@ -18,6 +18,9 @@ function Relatorios() {
   const [setores, setSetores] = useState<any[]>([]);
   const [resps, setResps] = useState<any[]>([]);
   const [historico, setHistorico] = useState<any[]>([]);
+  const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
+  const [manutencoes, setManutencoes] = useState<any[]>([]);
+  const [inventarios, setInventarios] = useState<any[]>([]);
 
   const [tipo, setTipo] = useState("geral");
   const [fCat, setFCat] = useState("all");
@@ -32,13 +35,19 @@ function Relatorios() {
   useEffect(() => {
     (async () => {
       try {
-        const [{ data: p }, { data: s }, { data: r }, { data: h }] = await Promise.all([
+        const [{ data: p }, { data: s }, { data: r }, { data: h }, { data: m }, { data: man }, { data: inv }] = await Promise.all([
           supabase.from("patrimonios").select("*, setor:setores(nome), responsavel:responsaveis(nome)"),
           supabase.from("setores").select("*").order("nome"),
           supabase.from("responsaveis").select("*").order("nome"),
-          supabase.from("historico_patrimonio").select("*").order("created_at", { ascending: false }).limit(2000),
+          supabase.from("historico_patrimonio").select("*, patrimonios(codigo,nome,categoria)").order("created_at", { ascending: false }).limit(5000),
+          supabase.from("movimentacoes").select("*, patrimonios(codigo,nome), origem:setor_origem_id(nome), destino:setor_destino_id(nome), resp_origem:responsavel_origem_id(nome), resp_destino:responsavel_destino_id(nome)").order("data_movimentacao", { ascending: false }).limit(5000),
+          supabase.from("manutencoes").select("*, patrimonios(codigo,nome)").order("data_inicio", { ascending: false }).limit(5000),
+          supabase.from("inventarios").select("*").order("data_verificacao", { ascending: false }).limit(5000),
         ]);
         setItems(p ?? []); setSetores(s ?? []); setResps(r ?? []); setHistorico(h ?? []);
+        setMovimentacoes(m ?? []); setManutencoes(man ?? []);
+        const patrimonioById = new Map((p ?? []).map((item: any) => [item.id, item]));
+        setInventarios((inv ?? []).map((item: any) => ({ ...item, patrimonios: patrimonioById.get(item.patrimonio_id) })));
       } catch {
         // falha silenciosa
       }
@@ -70,6 +79,16 @@ function Relatorios() {
   }), [items, fCat, fSet, fResp, fEst, dInicio, dFim, vMin, vMax]);
 
   const valorTotal = filtered.reduce((a, i) => a + Number(i.valor_atual ?? 0), 0);
+
+  const inPeriod = (value: string | null | undefined) => {
+    const date = (value ?? "").slice(0, 10);
+    return (!dInicio || !date || date >= dInicio) && (!dFim || !date || date <= dFim);
+  };
+  const movimentacoesFiltradas = movimentacoes.filter((m) => inPeriod(m.data_movimentacao));
+  const manutencoesFiltradas = manutencoes.filter((m) => inPeriod(m.data_inicio));
+  const inventariosFiltrados = inventarios.filter((i) => inPeriod(i.data_verificacao));
+  const garantias = filtered.filter((i) => i.garantia_ate || i.data_fim_garantia);
+  const historicoCompleto = historico.filter((h) => inPeriod(h.created_at));
 
   // Aggregations
   const byGroup = (key: string, label: (v: any) => string) => {
@@ -103,6 +122,25 @@ function Relatorios() {
         data: new Date(h.created_at).toLocaleString("pt-BR"),
         codigo: h.codigo, nome: h.nome, categoria: h.categoria,
         valor: h.valor, acao: h.acao, descricao: h.descricao,
+      }));
+      exportCSV(rows, `relatorio-${tipo}-${Date.now()}.csv`);
+      return;
+    }
+    if (tipo === "movimentacoes" || tipo === "manutencoes" || tipo === "inventarios" || tipo === "garantias" || tipo === "historico") {
+      const data = tipo === "movimentacoes" ? movimentacoesFiltradas : tipo === "manutencoes" ? manutencoesFiltradas : tipo === "inventarios" ? inventariosFiltrados : tipo === "garantias" ? garantias : historicoCompleto;
+      const rows = data.map((row) => tipo === "movimentacoes" ? ({
+        data: new Date(row.data_movimentacao).toLocaleString("pt-BR"), patrimonio: `${row.patrimonios?.codigo ?? "—"} - ${row.patrimonios?.nome ?? "—"}`,
+        origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—", observacoes: row.observacoes ?? "—",
+      }) : tipo === "manutencoes" ? ({
+        inicio: row.data_inicio, conclusao: row.data_conclusao ?? "—", patrimonio: `${row.patrimonios?.codigo ?? "—"} - ${row.patrimonios?.nome ?? "—"}`,
+        tipo: row.tipo, tecnico: row.tecnico ?? "—", fornecedor: row.fornecedor ?? "—", custo: row.custo, status: row.status,
+      }) : tipo === "inventarios" ? ({
+        data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: `${row.patrimonios?.codigo ?? "—"} - ${row.patrimonios?.nome ?? "—"}`,
+        status: row.status_verificacao, observacao: row.observacao ?? "—", sessao: row.sessao_id ?? "—",
+      }) : tipo === "garantias" ? ({
+        codigo: row.codigo, nome: row.nome, categoria: row.categoria, fornecedor: row.fornecedor ?? "—", garantia_ate: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero_garantia: row.numero_garantia ?? "—",
+      }) : ({
+        data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: `${row.patrimonios?.codigo ?? row.codigo ?? "—"} - ${row.patrimonios?.nome ?? row.nome ?? "—"}`, descricao: row.descricao ?? "—", usuario_id: row.usuario_id ?? "—",
       }));
       exportCSV(rows, `relatorio-${tipo}-${Date.now()}.csv`);
       return;
@@ -150,6 +188,11 @@ function Relatorios() {
         { key: "categoria", label: "Categoria" },
         { key: "valor_atual", label: "Valor", fmt: formatBRL },
       ]);
+    } else {
+      const data = tipo === "movimentacoes" ? movimentacoesFiltradas : tipo === "manutencoes" ? manutencoesFiltradas : tipo === "inventarios" ? inventariosFiltrados : tipo === "garantias" ? garantias : historicoCompleto;
+      const rows = data.map((row) => tipo === "movimentacoes" ? ({ data: new Date(row.data_movimentacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—" }) : tipo === "manutencoes" ? ({ inicio: row.data_inicio, patrimonio: row.patrimonios?.codigo ?? "—", tipo: row.tipo, tecnico: row.tecnico ?? "—", custo: row.custo, status: row.status }) : tipo === "inventarios" ? ({ data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", status: row.status_verificacao, observacao: row.observacao ?? "—" }) : tipo === "garantias" ? ({ codigo: row.codigo, nome: row.nome, fornecedor: row.fornecedor ?? "—", validade: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero: row.numero_garantia ?? "—" }) : ({ data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: row.patrimonios?.codigo ?? row.codigo ?? "—", descricao: row.descricao ?? "—" }));
+      const cols = Object.keys(rows[0] ?? {}).map((key) => ({ key, label: key.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase()), fmt: key === "custo" ? formatBRL : undefined }));
+      gerarRelatorioTabela(`Relatório de ${tipo}`, rows, cols);
     }
   };
 
@@ -162,7 +205,7 @@ function Relatorios() {
 
       <Card className="p-6 bg-card border-border mb-4">
         <h3 className="text-xs uppercase text-primary font-semibold mb-4">Tipo de Relatório</h3>
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           {[
             { id: "geral", label: "Geral" },
             { id: "setor", label: "Por Setor" },
@@ -170,6 +213,11 @@ function Relatorios() {
             { id: "categoria", label: "Por Categoria" },
             { id: "adicoes", label: "Adições" },
             { id: "exclusoes", label: "Exclusões" },
+            { id: "movimentacoes", label: "Movimentações" },
+            { id: "manutencoes", label: "Manutenções" },
+            { id: "inventarios", label: "Inventários" },
+            { id: "garantias", label: "Garantias" },
+            { id: "historico", label: "Histórico completo" },
           ].map((t) => (
             <button key={t.id} onClick={() => setTipo(t.id)}
               className={`p-4 rounded-md border text-sm font-medium ${tipo === t.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"}`}>
@@ -218,6 +266,11 @@ function Relatorios() {
           <div className="text-sm text-muted-foreground">
             {tipo === "adicoes" ? `${adicoes.length} adições`
               : tipo === "exclusoes" ? `${exclusoes.length} exclusões`
+              : tipo === "movimentacoes" ? `${movimentacoesFiltradas.length} movimentações`
+              : tipo === "manutencoes" ? `${manutencoesFiltradas.length} manutenções · ${formatBRL(manutencoesFiltradas.reduce((sum, row) => sum + Number(row.custo ?? 0), 0))}`
+              : tipo === "inventarios" ? `${inventariosFiltrados.length} verificações`
+              : tipo === "garantias" ? `${garantias.length} garantias`
+              : tipo === "historico" ? `${historicoCompleto.length} eventos`
               : `${filtered.length} itens · ${formatBRL(valorTotal)}`}
           </div>
         </div>
@@ -285,8 +338,18 @@ function Relatorios() {
               </tbody>
             </table>
           )}
+          {tipo === "movimentacoes" && <ReportTable rows={movimentacoesFiltradas.map((m) => ({ data: new Date(m.data_movimentacao).toLocaleString("pt-BR"), patrimonio: m.patrimonios?.codigo ?? "—", origem: m.origem?.nome ?? "—", destino: m.destino?.nome ?? "—", motivo: m.motivo ?? "—" }))} />}
+          {tipo === "manutencoes" && <ReportTable rows={manutencoesFiltradas.map((m) => ({ inicio: m.data_inicio, patrimonio: m.patrimonios?.codigo ?? "—", tipo: m.tipo, tecnico: m.tecnico ?? "—", custo: formatBRL(m.custo), status: m.status }))} />}
+          {tipo === "inventarios" && <ReportTable rows={inventariosFiltrados.map((i) => ({ data: new Date(i.data_verificacao).toLocaleString("pt-BR"), patrimonio: i.patrimonios?.codigo ?? "—", status: i.status_verificacao, observacao: i.observacao ?? "—" }))} />}
+          {tipo === "garantias" && <ReportTable rows={garantias.map((i) => ({ codigo: i.codigo, nome: i.nome, fornecedor: i.fornecedor ?? "—", validade: i.garantia_ate ?? i.data_fim_garantia ?? "—", numero: i.numero_garantia ?? "—" }))} />}
+          {tipo === "historico" && <ReportTable rows={historicoCompleto.map((h) => ({ data: new Date(h.created_at).toLocaleString("pt-BR"), acao: h.acao, patrimonio: h.patrimonios?.codigo ?? h.codigo ?? "—", descricao: h.descricao ?? "—" }))} />}
         </div>
       </Card>
     </AppLayout>
   );
+}
+
+function ReportTable({ rows }: { rows: Record<string, any>[] }) {
+  const keys = Object.keys(rows[0] ?? {});
+  return <table className="w-full text-sm"><thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0"><tr>{keys.map((key) => <th key={key} className="px-4 py-3 text-left">{key.replaceAll("_", " ")}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-t border-border">{keys.map((key) => <td key={key} className="px-4 py-2">{row[key]}</td>)}</tr>)}{rows.length === 0 && <tr><td colSpan={Math.max(keys.length, 1)} className="text-center text-muted-foreground py-8">Nenhum registro no período</td></tr>}</tbody></table>;
 }

@@ -50,6 +50,39 @@ export function exportPDF(title: string, html: string) {
   w.document.close();
 }
 
+export function imprimirPDF(title: string, html: string) {
+  const frame = document.createElement("iframe");
+  frame.style.position = "fixed";
+  frame.style.right = "0";
+  frame.style.bottom = "0";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+  frame.srcdoc = `<!doctype html><html><head><title>${title}</title>
+    <style>
+      @page{size:auto;margin:16mm}
+      body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:0}
+      h1{color:#C0392B;border-bottom:3px solid #C0392B;padding-bottom:8px}
+      table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+      th,td{padding:8px;border:1px solid #ddd;text-align:left}
+      th{background:#1A1A1A;color:#fff}
+      tr:nth-child(even){background:#f7f7f7}
+      .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+      .brand{font-weight:800;font-size:24px}
+      .brand .r{color:#C0392B}
+      .meta{font-size:11px;color:#666}
+    </style></head><body>
+    <div class="header"><div class="brand"><span class="r">ASTRO</span>TUR</div><div class="meta">Gerado em ${new Date().toLocaleString("pt-BR")}</div></div>
+    <h1>${title}</h1>${html}
+    </body></html>`;
+  document.body.appendChild(frame);
+  frame.onload = () => {
+    frame.contentWindow?.focus();
+    frame.contentWindow?.print();
+    window.setTimeout(() => frame.remove(), 1000);
+  };
+}
+
 export function gerarRelatorioItem(item: any) {
   const html = `
     <h2>Identificação</h2>
@@ -84,4 +117,13 @@ export function gerarRelatorioTabela(title: string, rows: any[], cols: { key: st
     <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
   `;
   exportPDF(title, html);
+}
+
+export function gerarTabelaHTML(rows: any[], cols: { key: string; label: string; fmt?: (v: any) => string }[]) {
+  const total = rows.reduce((a, r) => a + Number(r.valor_atual ?? 0), 0);
+  const head = cols.map((c) => `<th>${c.label}</th>`).join("");
+  const body = rows.map((r) =>
+    `<tr>${cols.map((c) => `<td>${c.fmt ? c.fmt(r[c.key]) : (r[c.key] ?? "—")}</td>`).join("")}</tr>`
+  ).join("");
+  return `<p class="meta">Total de itens: <b>${rows.length}</b> · Valor total: <b>${formatBRL(total)}</b></p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }

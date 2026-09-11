@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatBRL } from "@/lib/categorias";
+import { ReportActions } from "@/components/ReportActions";
 
 export const Route = createFileRoute("/responsaveis")({ component: Page });
 
@@ -73,7 +74,10 @@ function Page() {
           <h1 className="text-3xl font-bold">Responsáveis</h1>
           <p className="text-sm text-muted-foreground">{list.length} pessoa(s) cadastrada(s)</p>
         </div>
-        <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Responsável</Button>
+        <div className="flex flex-wrap gap-2">
+          <ReportActions title="Relatório completo de Responsáveis" filename="relatorio-responsaveis" rows={list.map((r) => ({ nome: r.nome, cargo: r.cargo ?? "—", setor: r.setor?.nome ?? "—", contato_email: r.contato_email ?? "—", contato_telefone: r.contato_telefone ?? "—", itens: (itensPorResp[r.id] ?? []).length }))} columns={[{ key: "nome", label: "Nome" }, { key: "cargo", label: "Cargo" }, { key: "setor", label: "Setor" }, { key: "contato_email", label: "E-mail" }, { key: "contato_telefone", label: "Telefone" }, { key: "itens", label: "Itens" }]} />
+          <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Responsável</Button>
+        </div>
       </div>
 
       <Card className="bg-card border-border divide-y divide-border">

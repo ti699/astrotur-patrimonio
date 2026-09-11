@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowRightLeft, Plus, Loader2, Filter, X } from "lucide-react";
+import { ReportActions } from "@/components/ReportActions";
 
 export const Route = createFileRoute("/movimentacoes")({ component: MovPage });
 
@@ -101,10 +102,20 @@ function MovPage() {
           <h1 className="text-3xl font-bold flex items-center gap-3"><ArrowRightLeft className="h-7 w-7 text-primary" />Movimentações</h1>
           <p className="text-sm text-muted-foreground">Histórico de transferências de patrimônios entre setores, responsáveis e localizações</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" />Nova movimentação</Button>
-          </DialogTrigger>
+        <div className="flex flex-wrap gap-2">
+          <ReportActions title="Relatório completo de Movimentações" filename="relatorio-movimentacoes" rows={filtradas.map((m) => ({
+            data: new Date(m.data_movimentacao).toLocaleString("pt-BR"), patrimonio: `${m.patrimonios?.codigo ?? "—"} - ${m.patrimonios?.nome ?? "—"}`,
+            setor_origem: m.origem?.nome ?? "—", setor_destino: m.destino?.nome ?? "—", responsavel_origem: m.resp_origem?.nome ?? "—", responsavel_destino: m.resp_destino?.nome ?? "—",
+            localizacao_origem: m.localizacao_origem ?? "—", localizacao_destino: m.localizacao_destino ?? "—", motivo: m.motivo ?? "—", observacoes: m.observacoes ?? "—",
+          }))} columns={[
+            { key: "data", label: "Data" }, { key: "patrimonio", label: "Patrimônio" }, { key: "setor_origem", label: "Setor origem" }, { key: "setor_destino", label: "Setor destino" },
+            { key: "responsavel_origem", label: "Responsável origem" }, { key: "responsavel_destino", label: "Responsável destino" }, { key: "localizacao_origem", label: "Localização origem" },
+            { key: "localizacao_destino", label: "Localização destino" }, { key: "motivo", label: "Motivo" }, { key: "observacoes", label: "Observações" },
+          ]} />
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" />Nova movimentação</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl bg-card border-border">
             <DialogHeader><DialogTitle>Registrar movimentação</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -136,7 +147,8 @@ function MovPage() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filtros */}

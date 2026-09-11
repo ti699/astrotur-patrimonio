@@ -1,7 +1,6 @@
 import { Link, useRouter, useLocation } from "@tanstack/react-router";
-import { useAuth, LOCAL_SESSION_KEY } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect, type ReactNode } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Package, FileBarChart, Building2, Users, Settings, LogOut, Plus, List, UserCircle, ShieldAlert, ArrowLeft,
   ArrowRightLeft, Wrench, History, ClipboardList, ClipboardCheck, ShieldCheck,
@@ -31,9 +30,10 @@ const NAV = [
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { session, loading, user, profile, isAdmin } = useAuth();
+  const { session, loading, user, profile, isAdmin, signOut } = useAuth();
   const router = useRouter();
   const location = useLocation();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) router.navigate({ to: "/login" });
@@ -51,9 +51,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
     exact ? location.pathname === to : location.pathname === to || location.pathname.startsWith(to + "/");
 
   const handleLogout = async () => {
-    localStorage.removeItem(LOCAL_SESSION_KEY);
-    await supabase.auth.signOut();
-    router.navigate({ to: "/login" });
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await signOut();
+    } finally {
+      router.navigate({ to: "/login" });
+      setLoggingOut(false);
+    }
   };
 
   const items = NAV.filter((i) => !i.adminOnly || isAdmin);
@@ -110,9 +115,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider">
             {isAdmin ? "Administrador" : "Usuário"}
           </div>
-          <button onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent">
-            <LogOut className="h-4 w-4" /> Sair
+          <button onClick={handleLogout} disabled={loggingOut}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent disabled:opacity-60">
+            <LogOut className="h-4 w-4" /> {loggingOut ? "Saindo..." : "Sair do sistema"}
           </button>
         </div>
       </aside>
@@ -121,7 +126,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="text-lg font-extrabold">
           <span className="text-primary">ASTRO</span><span>TUR</span>
         </div>
-        <button onClick={handleLogout} className="text-sm text-muted-foreground">Sair</button>
+        <button onClick={handleLogout} disabled={loggingOut}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-60"
+          aria-label="Sair do sistema">
+          <LogOut className="h-4 w-4" /> {loggingOut ? "Saindo..." : "Sair"}
+        </button>
       </div>
 
       <main className="flex-1 md:ml-0 mt-14 md:mt-0 overflow-x-hidden pb-20 md:pb-0">

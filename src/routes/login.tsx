@@ -7,17 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Info, Eye, EyeOff, Zap } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
-const TEST_EMAIL = "admin@astrotur.com";
-const TEST_PASS = "admin123";
-
 function Login() {
   const router = useRouter();
-  const { session, localLogin } = useAuth();
+  const { session } = useAuth();
   const [email, setEmail] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("astrotur:remember-email") ?? "" : ""));
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,33 +38,6 @@ function Login() {
       if (remember) localStorage.setItem("astrotur:remember-email", email);
       else localStorage.removeItem("astrotur:remember-email");
       toast.success("Bem-vindo!");
-    } catch (err: any) {
-      toast.error(traduzirErro(err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const useTestAdmin = async () => {
-    setLoading(true);
-    try {
-      try {
-        await doLogin(TEST_EMAIL, TEST_PASS);
-        toast.success("Acesso de teste liberado!");
-      } catch {
-        // Não existe ainda — cria
-        const { error } = await supabase.auth.signUp({
-          email: TEST_EMAIL,
-          password: TEST_PASS,
-          options: {
-            data: { nome: "Administrador de Teste", cargo: "Administrador", setor: "TI", role: "admin" },
-            emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-          },
-        });
-        if (error) throw error;
-        await doLogin(TEST_EMAIL, TEST_PASS);
-        toast.success("Usuário admin criado e autenticado!");
-      }
     } catch (err: any) {
       toast.error(traduzirErro(err.message));
     } finally {
@@ -120,27 +90,8 @@ function Login() {
           </Link>
         </form>
 
-        <div className="mt-6 rounded-md border border-primary/40 bg-primary/5 p-3">
-          <div className="flex items-start gap-2 mb-2">
-            <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-            <div className="text-xs text-muted-foreground">
-              <div className="font-semibold text-foreground mb-1">Usuário de teste</div>
-              <div className="font-mono">admin@astrotur.com</div>
-              <div className="font-mono">Senha: admin123</div>
-            </div>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={useTestAdmin} disabled={loading} className="w-full mb-2">
-            Entrar como administrador de teste
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => { localLogin(); router.navigate({ to: "/" }); }}
-            className="w-full bg-primary/80 hover:bg-primary gap-2"
-          >
-            <Zap className="h-3.5 w-3.5" />
-            Entrar sem internet (modo local)
-          </Button>
+        <div className="mt-6 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+          Acesso administrativo exige uma conta cadastrada e validada no Supabase.
         </div>
       </Card>
     </div>

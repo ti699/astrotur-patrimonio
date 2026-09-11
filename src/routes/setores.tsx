@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { formatBRL } from "@/lib/categorias";
 import { toast } from "sonner";
+import { ReportActions } from "@/components/ReportActions";
 
 export const Route = createFileRoute("/setores")({ component: Setores });
 
@@ -72,7 +73,10 @@ function Setores() {
           <h1 className="text-3xl font-bold">Setores</h1>
           <p className="text-sm text-muted-foreground">Departamentos cadastrados na empresa</p>
         </div>
-        <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Setor</Button>
+        <div className="flex flex-wrap gap-2">
+          <ReportActions title="Relatório completo de Setores" filename="relatorio-setores" rows={list.map((s) => ({ nome: s.nome, descricao: s.descricao ?? "—", itens: counts[s.id]?.qtd ?? 0, valor: counts[s.id]?.valor ?? 0 }))} columns={[{ key: "nome", label: "Setor" }, { key: "descricao", label: "Descrição" }, { key: "itens", label: "Itens" }, { key: "valor", label: "Valor", fmt: formatBRL }]} />
+          <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Setor</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

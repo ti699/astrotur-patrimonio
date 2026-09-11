@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -15,7 +14,7 @@ function SignUp() {
   const router = useRouter();
   const [form, setForm] = useState({
     nome: "", email: "", password: "", confirm: "",
-    cargo: "", setor: "", role: "user" as "admin" | "user",
+    cargo: "", setor: "",
   });
   const [loading, setLoading] = useState(false);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -32,7 +31,7 @@ function SignUp() {
       const { error } = await supabase.auth.signUp({
         email: form.email, password: form.password,
         options: {
-          data: { nome: form.nome, cargo: form.cargo, setor: form.setor, role: form.role },
+          data: { nome: form.nome, cargo: form.cargo, setor: form.setor },
           emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
         },
       });
@@ -96,17 +95,6 @@ function SignUp() {
               <Input value={form.setor} onChange={(e) => set("setor")(e.target.value)} placeholder="Ex: TI" />
             </div>
           </div>
-          <div>
-            <Label>Tipo de usuário</Label>
-            <Select value={form.role} onValueChange={(v) => set("role")(v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">Usuário comum</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90 mt-4">
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Criar conta

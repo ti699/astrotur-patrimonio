@@ -14,6 +14,7 @@ import { formatBRL } from "@/lib/categorias";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Wrench, Plus, Loader2 } from "lucide-react";
+import { ReportActions } from "@/components/ReportActions";
 
 export const Route = createFileRoute("/manutencoes")({ component: Page });
 
@@ -61,8 +62,17 @@ function Page() {
           <h1 className="text-3xl font-bold flex items-center gap-3"><Wrench className="h-7 w-7 text-primary" />Manutenções</h1>
           <p className="text-sm text-muted-foreground">Controle de manutenções preventivas e corretivas</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" />Nova manutenção</Button></DialogTrigger>
+        <div className="flex flex-wrap gap-2">
+          <ReportActions title="Relatório completo de Manutenções" filename="relatorio-manutencoes" rows={rows.map((m) => ({
+            inicio: m.data_inicio, conclusao: m.data_conclusao ?? "—", patrimonio: `${m.patrimonios?.codigo ?? "—"} - ${m.patrimonios?.nome ?? "—"}`,
+            tipo: m.tipo, descricao: m.descricao ?? "—", tecnico: m.tecnico ?? "—", fornecedor: m.fornecedor ?? "—", custo: m.custo, status: m.status, observacoes: m.observacoes ?? "—",
+          }))} columns={[
+            { key: "inicio", label: "Início" }, { key: "conclusao", label: "Conclusão" }, { key: "patrimonio", label: "Patrimônio" }, { key: "tipo", label: "Tipo" },
+            { key: "descricao", label: "Descrição" }, { key: "tecnico", label: "Técnico" }, { key: "fornecedor", label: "Fornecedor" }, { key: "custo", label: "Custo", fmt: formatBRL },
+            { key: "status", label: "Status" }, { key: "observacoes", label: "Observações" },
+          ]} />
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" />Nova manutenção</Button></DialogTrigger>
           <DialogContent className="max-w-2xl bg-card border-border">
             <DialogHeader><DialogTitle>Registrar manutenção</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -97,7 +107,8 @@ function Page() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="p-0 bg-card border-border overflow-hidden">

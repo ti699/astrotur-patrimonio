@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { ClipboardList } from "lucide-react";
+import { ReportActions } from "@/components/ReportActions";
 
 export const Route = createFileRoute("/auditoria")({ component: Page });
 
@@ -26,9 +27,12 @@ function Audit() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-3"><ClipboardList className="h-7 w-7 text-primary" />Auditoria</h1>
-        <p className="text-sm text-muted-foreground">Logs administrativos — alterações realizadas no sistema</p>
+      <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div><h1 className="text-3xl font-bold flex items-center gap-3"><ClipboardList className="h-7 w-7 text-primary" />Auditoria</h1>
+        <p className="text-sm text-muted-foreground">Logs administrativos — alterações realizadas no sistema</p></div>
+        <ReportActions title="Relatório completo da Auditoria" filename="relatorio-auditoria" rows={rows.map((h) => ({
+          data: new Date(h.created_at).toLocaleString("pt-BR"), patrimonio: `${h.patrimonios?.codigo ?? "—"} - ${h.patrimonios?.nome ?? "—"}`, acao: h.acao, descricao: h.descricao ?? "—", usuario_id: h.usuario_id ?? "—",
+        }))} columns={[{ key: "data", label: "Data/Hora" }, { key: "patrimonio", label: "Patrimônio" }, { key: "acao", label: "Ação" }, { key: "descricao", label: "Descrição" }, { key: "usuario_id", label: "Usuário" }]} />
       </div>
       <Card className="p-0 bg-card border-border overflow-hidden">
         <Table>
