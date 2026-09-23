@@ -22,14 +22,19 @@ export function ReportActions({ title, filename, rows, columns }: {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)} title={`Visualizar ${title}`}>
-        <FileText className="h-4 w-4 mr-2" /> Ver relatório completo
+      <Button
+        variant="outline"
+        onClick={() => setOpen(true)}
+        title={`Gerar ${title}`}
+        className="border-zinc-300 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 hover:text-zinc-900"
+      >
+        <FileText className="h-4 w-4 mr-2" /> Gerar relatório
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden bg-zinc-100 border-zinc-300 text-zinc-900">
           <DialogHeader>
             <DialogTitle className="text-zinc-900">{title}</DialogTitle>
-            <DialogDescription className="text-zinc-600">{rows.length} registro(s) encontrado(s). Revise o relatório antes de exportar.</DialogDescription>
+            <DialogDescription className="text-zinc-600">{rows.length} registro(s) encontrado(s). Revise o conteúdo antes de exportar.</DialogDescription>
           </DialogHeader>
           <div className="min-h-0 overflow-auto rounded-md border border-zinc-300 bg-white p-4 shadow-sm">
             <div className="mb-4 flex items-center justify-between border-b border-zinc-200 pb-3">
@@ -39,8 +44,12 @@ export function ReportActions({ title, filename, rows, columns }: {
             <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: gerarTabelaHTML(rows, columns) }} />
           </div>
           <DialogFooter className="flex-row justify-end gap-2">
-            <Button variant="outline" onClick={exportarCSV}><Download className="h-4 w-4 mr-2" /> Baixar CSV</Button>
-            <Button onClick={exportarPDF} className="bg-red-700 hover:bg-red-800"><FileText className="h-4 w-4 mr-2" /> Baixar PDF</Button>
+            <Button variant="outline" onClick={exportarCSV} className="border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100">
+              <Download className="h-4 w-4 mr-2" /> Baixar CSV
+            </Button>
+            <Button onClick={exportarPDF} className="bg-red-700 text-white hover:bg-red-800">
+              <FileText className="h-4 w-4 mr-2" /> Baixar PDF
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
