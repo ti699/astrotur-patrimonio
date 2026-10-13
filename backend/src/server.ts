@@ -13,7 +13,7 @@ import inventariosRoutes from './routes/inventarios';
 import adminRoutes from './routes/admin';
 import documentosRoutes from './routes/documentos';
 import uploadRoutes from './routes/upload'; // <--- Rota de upload criada com Multer
-import { authenticate } from './middleware/auth';
+import { authenticate, authenticateCookie } from './middleware/auth';
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL não definido');
@@ -26,11 +26,12 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http:/
   .split(',')
   .map((v) => v.trim())
   .filter(Boolean);
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // Servir os arquivos de imagem estaticamente para o navegador conseguir carregar
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Acesso às fotos exige o cookie de sessão definido no login
+app.use('/uploads', authenticateCookie, express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
 
 // Registar Rotas da API
 app.use('/api/auth', authRoutes);

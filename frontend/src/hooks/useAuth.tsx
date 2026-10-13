@@ -84,6 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return;
 
     setLoading(true);
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // segue com o logout local mesmo se a API falhar
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setProfile(null);
