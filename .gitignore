@@ -36,3 +36,6 @@ dist-ssr
 supabase/.temp/
 dist/
 node_modules/
+# Uploads locais (evita subir fotos de testes para o GitHub)
+backend/uploads/*
+!backend/uploads/.gitkeep
