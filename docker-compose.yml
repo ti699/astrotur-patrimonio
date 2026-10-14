@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
 
   backend:
     build:
@@ -24,23 +23,21 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      - postgres
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://187.127.0.219:3001/api
+        REACT_APP_API_URL: http://187.127.0.219:3001/api
     container_name: patrimonio_web
     restart: always
     ports:
       - "${FRONTEND_PORT}:5173"
-    depends_on:
-      - backend
+    environment:
+      - VITE_API_URL=http://187.127.0.219:3001/api
+      - REACT_APP_API_URL=http://187.127.0.219:3001/api
 
 volumes:
   pgdata:
-  uploads:
