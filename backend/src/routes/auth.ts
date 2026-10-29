@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import { pool } from '../db';
 import { authenticate, JWT_SECRET, setSessionCookie, clearSessionCookie, readCookie, COOKIE_NAME } from '../middleware/auth';
 
@@ -79,6 +80,80 @@ router.post('/signup', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erro ao criar conta' });
+  }
+});
+
+interface HubUser {
+  email?: unknown;
+  nome?: unknown;
+  name?: unknown;
+}
+interface HubValidateResponse {
+  valid?: boolean;
+  user?: HubUser;
+}
+
+const HUB_VALIDATE_URL = process.env.HUB_SSO_VALIDATE_URL || 'http://187.127.0.219:3002/api/sso/validate';
+
+// POST /api/auth/sso - troca o ticket do Hub por um JWT local
+router.post('/sso', async (req, res) => {
+  const ticket: unknown = req.body?.ticket;
+  if (typeof ticket !== 'string' || !ticket.trim()) {
+    return res.status(400).json({ message: 'Ticket é obrigatório' });
+  }
+
+  const clientSecret = process.env.PATRIMONIO_SSO_CLIENT_SECRET;
+  if (!clientSecret) {
+    console.error('PATRIMONIO_SSO_CLIENT_SECRET não configurado');
+    return res.status(500).json({ message: 'SSO não configurado' });
+  }
+
+  let hub: HubValidateResponse;
+  try {
+    const hubRes = await fetch(HUB_VALIDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket: ticket.trim(), client_secret: clientSecret }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (hubRes.status >= 500) {
+      return res.status(502).json({ message: 'Hub indisponível' });
+    }
+    hub = (await hubRes.json().catch(() => ({}))) as HubValidateResponse;
+  } catch (error) {
+    console.error('Falha ao contactar o Hub SSO:', error);
+    return res.status(502).json({ message: 'Hub indisponível' });
+  }
+
+  const hubEmail = typeof hub.user?.email === 'string' ? hub.user.email.trim().toLowerCase() : '';
+  if (hub.valid !== true || !hubEmail) {
+    return res.status(401).json({ message: 'Ticket inválido ou expirado' });
+  }
+
+  try {
+    let result = await pool.query('SELECT * FROM users WHERE LOWER(BTRIM(email)) = $1', [hubEmail]);
+
+    if (result.rows.length === 0) {
+      const hubName = [hub.user?.nome, hub.user?.name].find((v): v is string => typeof v === 'string' && !!v.trim());
+      // Senha aleatória: contas SSO não usam login por senha
+      const hash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+      result = await pool.query(
+        'INSERT INTO users (nome, email, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING *',
+        [hubName?.trim() || hubEmail.split('@')[0], hubEmail, hash, 'user']
+      );
+    }
+
+    const user = result.rows[0];
+    if (user.status === 'inactive') {
+      return res.status(403).json({ message: 'Utilizador desativado' });
+    }
+
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    setSessionCookie(res, token);
+    res.json({ token, user: publicUser(user) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao efetuar login via SSO' });
   }
 });
 
