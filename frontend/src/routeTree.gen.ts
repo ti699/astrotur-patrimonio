@@ -25,6 +25,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ResponsaveisRouteImport } from './routes/responsaveis'
 import { Route as SetoresRouteImport } from './routes/setores'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SsoRouteImport } from './routes/sso'
 import { Route as PatrimoniosIndexRouteImport } from './routes/patrimonios/index'
 import { Route as PatrimoniosNovoRouteImport } from './routes/patrimonios/novo'
 import { Route as PatrimoniosIdIndexRouteImport } from './routes/patrimonios/$id/index'
@@ -110,6 +111,11 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SsoRoute = SsoRouteImport.update({
+  id: '/sso',
+  path: '/sso',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PatrimoniosIndexRoute = PatrimoniosIndexRouteImport.update({
   id: '/patrimonios/',
   path: '/patrimonios/',
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/responsaveis': typeof ResponsaveisRoute
   '/setores': typeof SetoresRoute
   '/signup': typeof SignupRoute
+  '/sso': typeof SsoRoute
   '/patrimonios/novo': typeof PatrimoniosNovoRoute
   '/patrimonios/': typeof PatrimoniosIndexRoute
   '/patrimonios/$id/editar': typeof PatrimoniosIdEditarRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/responsaveis': typeof ResponsaveisRoute
   '/setores': typeof SetoresRoute
   '/signup': typeof SignupRoute
+  '/sso': typeof SsoRoute
   '/patrimonios/novo': typeof PatrimoniosNovoRoute
   '/patrimonios': typeof PatrimoniosIndexRoute
   '/patrimonios/$id/editar': typeof PatrimoniosIdEditarRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/responsaveis': typeof ResponsaveisRoute
   '/setores': typeof SetoresRoute
   '/signup': typeof SignupRoute
+  '/sso': typeof SsoRoute
   '/patrimonios/novo': typeof PatrimoniosNovoRoute
   '/patrimonios/': typeof PatrimoniosIndexRoute
   '/patrimonios/$id/editar': typeof PatrimoniosIdEditarRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/responsaveis'
     | '/setores'
     | '/signup'
+    | '/sso'
     | '/patrimonios/novo'
     | '/patrimonios/'
     | '/patrimonios/$id/editar'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/responsaveis'
     | '/setores'
     | '/signup'
+    | '/sso'
     | '/patrimonios/novo'
     | '/patrimonios'
     | '/patrimonios/$id/editar'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/responsaveis'
     | '/setores'
     | '/signup'
+    | '/sso'
     | '/patrimonios/novo'
     | '/patrimonios/'
     | '/patrimonios/$id/editar'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   ResponsaveisRoute: typeof ResponsaveisRoute
   SetoresRoute: typeof SetoresRoute
   SignupRoute: typeof SignupRoute
+  SsoRoute: typeof SsoRoute
   PatrimoniosNovoRoute: typeof PatrimoniosNovoRoute
   PatrimoniosIndexRoute: typeof PatrimoniosIndexRoute
   PatrimoniosIdEditarRoute: typeof PatrimoniosIdEditarRoute
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sso': {
+      id: '/sso'
+      path: '/sso'
+      fullPath: '/sso'
+      preLoaderRoute: typeof SsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/patrimonios/': {
       id: '/patrimonios/'
       path: '/patrimonios'
@@ -452,6 +472,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResponsaveisRoute: ResponsaveisRoute,
   SetoresRoute: SetoresRoute,
   SignupRoute: SignupRoute,
+  SsoRoute: SsoRoute,
   PatrimoniosNovoRoute: PatrimoniosNovoRoute,
   PatrimoniosIndexRoute: PatrimoniosIndexRoute,
   PatrimoniosIdEditarRoute: PatrimoniosIdEditarRoute,

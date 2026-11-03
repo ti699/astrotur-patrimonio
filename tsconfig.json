@@ -5,6 +5,7 @@
     "frontend/vite.config.ts",
     "frontend/eslint.config.js"
   ],
+  "exclude": ["backend/**/*", "node_modules"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
