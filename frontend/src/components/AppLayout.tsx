@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard, Package, FileBarChart, Building2, Users, Settings, LogOut, Plus, List, UserCircle, ShieldAlert, ArrowLeft,
-  ArrowRightLeft, Wrench, History, ClipboardList, ClipboardCheck, ShieldCheck,
+  ArrowRightLeft, Wrench, History, ClipboardList, ClipboardCheck, ShieldCheck, Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const NAV = [
   },
   { to: "/movimentacoes", label: "Movimentações", icon: ArrowRightLeft, adminOnly: false },
   { to: "/manutencoes", label: "Manutenções", icon: Wrench, adminOnly: false },
+  { to: "/baixas", label: "Baixas", icon: Archive, adminOnly: false },
   { to: "/historico", label: "Histórico", icon: History, adminOnly: false },
   { to: "/inventario", label: "Inventário", icon: ClipboardCheck, adminOnly: false },
   { to: "/garantias", label: "Garantias", icon: ShieldCheck, adminOnly: false },

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuditoriaRouteImport } from './routes/auditoria'
+import { Route as BaixasRouteImport } from './routes/baixas'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as GarantiasRouteImport } from './routes/garantias'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuditoriaRoute = AuditoriaRouteImport.update({
   id: '/auditoria',
   path: '/auditoria',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BaixasRoute = BaixasRouteImport.update({
+  id: '/baixas',
+  path: '/baixas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
@@ -140,6 +146,7 @@ const PatrimoniosIdEditarRoute = PatrimoniosIdEditarRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auditoria': typeof AuditoriaRoute
+  '/baixas': typeof BaixasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/garantias': typeof GarantiasRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auditoria': typeof AuditoriaRoute
+  '/baixas': typeof BaixasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/garantias': typeof GarantiasRoute
@@ -187,6 +195,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auditoria': typeof AuditoriaRoute
+  '/baixas': typeof BaixasRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/garantias': typeof GarantiasRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auditoria'
+    | '/baixas'
     | '/configuracoes'
     | '/forgot-password'
     | '/garantias'
@@ -235,6 +245,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auditoria'
+    | '/baixas'
     | '/configuracoes'
     | '/forgot-password'
     | '/garantias'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auditoria'
+    | '/baixas'
     | '/configuracoes'
     | '/forgot-password'
     | '/garantias'
@@ -282,6 +294,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditoriaRoute: typeof AuditoriaRoute
+  BaixasRoute: typeof BaixasRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GarantiasRoute: typeof GarantiasRoute
@@ -317,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/auditoria'
       fullPath: '/auditoria'
       preLoaderRoute: typeof AuditoriaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/baixas': {
+      id: '/baixas'
+      path: '/baixas'
+      fullPath: '/baixas'
+      preLoaderRoute: typeof BaixasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -458,6 +478,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditoriaRoute: AuditoriaRoute,
+  BaixasRoute: BaixasRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GarantiasRoute: GarantiasRoute,

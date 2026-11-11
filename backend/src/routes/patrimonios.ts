@@ -152,6 +152,7 @@ router.put('/:id', async (req: any, res) => {
   const codigoNovo = typeof codigo === 'string' && codigo.trim() ? codigo.trim() : null;
 
   try {
+    const anterior = await pool.query('SELECT status FROM patrimonios WHERE id = $1', [id]);
     const result = await pool.query(
       `UPDATE patrimonios SET
         codigo = COALESCE($1, codigo), nome = $2, categoria = $3, subcategoria = $4, descricao = $5,
@@ -180,6 +181,14 @@ router.put('/:id', async (req: any, res) => {
 
     const atualizado = result.rows[0];
     await registrarHistorico(atualizado.id, 'Edição', `Patrimônio ${atualizado.codigo ?? ''} - ${atualizado.nome} atualizado`.replace('  ', ' '), req.auth?.id ?? null);
+    if (anterior.rows.length > 0 && anterior.rows[0].status !== atualizado.status) {
+      await registrarHistorico(
+        atualizado.id,
+        'Mudança de status',
+        `Status alterado de ${anterior.rows[0].status ?? 'não informado'} para ${atualizado.status}`,
+        req.auth?.id ?? null
+      );
+    }
     res.json(atualizado);
   } catch (error: any) {
     if (error?.code === '23505') {
@@ -187,6 +196,51 @@ router.put('/:id', async (req: any, res) => {
     }
     console.error(error);
     res.status(500).json({ message: 'Erro ao atualizar património' });
+  }
+});
+
+// POST /api/patrimonios/:id/descarte - Registar descarte/baixa com justificativa
+router.post('/:id/descarte', async (req: any, res) => {
+  const { id } = req.params;
+  const motivo = typeof req.body?.motivo === 'string' ? req.body.motivo.trim() : '';
+  if (!motivo) {
+    return res.status(400).json({ message: 'A justificativa do descarte é obrigatória' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const patrimonio = await client.query(
+      'SELECT id, codigo, nome, status FROM patrimonios WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (patrimonio.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Patrimônio não encontrado' });
+    }
+    if (String(patrimonio.rows[0].status ?? '').trim().toUpperCase() === 'DESCARTADO') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: 'Este patrimônio já foi descartado' });
+    }
+
+    const atualizado = await client.query(
+      `UPDATE patrimonios SET status = 'DESCARTADO', updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    await client.query(
+      `INSERT INTO historico_patrimonio (patrimonio_id, acao, descricao, usuario_id)
+       VALUES ($1, 'Descarte', $2, $3)`,
+      [id, motivo, req.auth?.id ?? null]
+    );
+    await client.query('COMMIT');
+    res.json(atualizado.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao registrar descarte/baixa' });
+  } finally {
+    client.release();
   }
 });
 
