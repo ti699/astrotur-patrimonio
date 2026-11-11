@@ -16,6 +16,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    base: "/patrimonio/", // <--- ADICIONADO AQUI: define a subrota base da aplicação
     css: {
       // PostCSS inline config — prevents global postcss.config.js (Tailwind v3)
       // from leaking into this project. @tailwindcss/vite handles all CSS transforms.
