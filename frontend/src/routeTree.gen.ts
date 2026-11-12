@@ -29,6 +29,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SsoRouteImport } from './routes/sso'
 import { Route as PatrimoniosIndexRouteImport } from './routes/patrimonios/index'
 import { Route as PatrimoniosNovoRouteImport } from './routes/patrimonios/novo'
+import { Route as SsoCallbackRouteImport } from './routes/sso.callback'
 import { Route as PatrimoniosIdIndexRouteImport } from './routes/patrimonios/$id/index'
 import { Route as PatrimoniosIdEditarRouteImport } from './routes/patrimonios/$id/editar'
 
@@ -132,6 +133,11 @@ const PatrimoniosNovoRoute = PatrimoniosNovoRouteImport.update({
   path: '/patrimonios/novo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SsoCallbackRoute = SsoCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => SsoRoute,
+} as any)
 const PatrimoniosIdIndexRoute = PatrimoniosIdIndexRouteImport.update({
   id: '/patrimonios/$id/',
   path: '/patrimonios/$id/',
@@ -161,8 +167,9 @@ export interface FileRoutesByFullPath {
   '/responsaveis': typeof ResponsaveisRoute
   '/setores': typeof SetoresRoute
   '/signup': typeof SignupRoute
-  '/sso': typeof SsoRoute
+  '/sso': typeof SsoRouteWithChildren
   '/patrimonios/novo': typeof PatrimoniosNovoRoute
+  '/sso/callback': typeof SsoCallbackRoute
   '/patrimonios/': typeof PatrimoniosIndexRoute
   '/patrimonios/$id/editar': typeof PatrimoniosIdEditarRoute
   '/patrimonios/$id/': typeof PatrimoniosIdIndexRoute
@@ -185,8 +192,9 @@ export interface FileRoutesByTo {
   '/responsaveis': typeof ResponsaveisRoute
   '/setores': typeof SetoresRoute
   '/signup': typeof SignupRoute
-  '/sso': typeof SsoRoute
+  '/sso': typeof SsoRouteWithChildren
   '/patrimonios/novo': typeof PatrimoniosNovoRoute
+  '/sso/callback': typeof SsoCallbackRoute
   '/patrimonios': typeof PatrimoniosIndexRoute
   '/patrimonios/$id/editar': typeof PatrimoniosIdEditarRoute
   '/patrimonios/$id': typeof PatrimoniosIdIndexRoute
@@ -210,8 +218,9 @@ export interface FileRoutesById {
   '/responsaveis': typeof ResponsaveisRoute
   '/setores': typeof SetoresRoute
   '/signup': typeof SignupRoute
-  '/sso': typeof SsoRoute
+  '/sso': typeof SsoRouteWithChildren
   '/patrimonios/novo': typeof PatrimoniosNovoRoute
+  '/sso/callback': typeof SsoCallbackRoute
   '/patrimonios/': typeof PatrimoniosIndexRoute
   '/patrimonios/$id/editar': typeof PatrimoniosIdEditarRoute
   '/patrimonios/$id/': typeof PatrimoniosIdIndexRoute
@@ -238,6 +247,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sso'
     | '/patrimonios/novo'
+    | '/sso/callback'
     | '/patrimonios/'
     | '/patrimonios/$id/editar'
     | '/patrimonios/$id/'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sso'
     | '/patrimonios/novo'
+    | '/sso/callback'
     | '/patrimonios'
     | '/patrimonios/$id/editar'
     | '/patrimonios/$id'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sso'
     | '/patrimonios/novo'
+    | '/sso/callback'
     | '/patrimonios/'
     | '/patrimonios/$id/editar'
     | '/patrimonios/$id/'
@@ -309,7 +321,7 @@ export interface RootRouteChildren {
   ResponsaveisRoute: typeof ResponsaveisRoute
   SetoresRoute: typeof SetoresRoute
   SignupRoute: typeof SignupRoute
-  SsoRoute: typeof SsoRoute
+  SsoRoute: typeof SsoRouteWithChildren
   PatrimoniosNovoRoute: typeof PatrimoniosNovoRoute
   PatrimoniosIndexRoute: typeof PatrimoniosIndexRoute
   PatrimoniosIdEditarRoute: typeof PatrimoniosIdEditarRoute
@@ -458,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PatrimoniosNovoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sso/callback': {
+      id: '/sso/callback'
+      path: '/callback'
+      fullPath: '/sso/callback'
+      preLoaderRoute: typeof SsoCallbackRouteImport
+      parentRoute: typeof SsoRoute
+    }
     '/patrimonios/$id/': {
       id: '/patrimonios/$id/'
       path: '/patrimonios/$id'
@@ -474,6 +493,16 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface SsoRouteChildren {
+  SsoCallbackRoute: typeof SsoCallbackRoute
+}
+
+const SsoRouteChildren: SsoRouteChildren = {
+  SsoCallbackRoute: SsoCallbackRoute,
+}
+
+const SsoRouteWithChildren = SsoRoute._addFileChildren(SsoRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -493,7 +522,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResponsaveisRoute: ResponsaveisRoute,
   SetoresRoute: SetoresRoute,
   SignupRoute: SignupRoute,
-  SsoRoute: SsoRoute,
+  SsoRoute: SsoRouteWithChildren,
   PatrimoniosNovoRoute: PatrimoniosNovoRoute,
   PatrimoniosIndexRoute: PatrimoniosIndexRoute,
   PatrimoniosIdEditarRoute: PatrimoniosIdEditarRoute,

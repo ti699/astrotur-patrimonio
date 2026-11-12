@@ -1,124 +1,112 @@
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { appPath } from "@/lib/utils";
+import { ArrowRight, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({ component: Login });
+
+function getSsoErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("ticket") || normalized.includes("expir")) {
+    return "O acesso expirou ou não pôde ser validado. Entre novamente pelo Astrotur Hub.";
+  }
+  if (normalized.includes("desativ") || normalized.includes("permiss")) {
+    return "Sua conta não tem permissão para acessar o Patrimônio. Solicite acesso ao administrador.";
+  }
+  if (normalized.includes("indisponível") || normalized.includes("indisponivel")) {
+    return "O Astrotur Hub está temporariamente indisponível. Tente novamente em instantes.";
+  }
+  return "Não foi possível concluir o acesso corporativo. Tente novamente pelo Astrotur Hub.";
+}
 
 function Login() {
   const router = useRouter();
   const { session } = useAuth();
-  const [email, setEmail] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("astrotur:remember-email") ?? "" : ""));
-  const [password, setPassword] = useState("");
+  const [ssoError, setSsoError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [remember, setRemember] = useState(() => typeof window !== "undefined" && !!localStorage.getItem("astrotur:remember-email"));
 
   useEffect(() => {
-    if (session) router.navigate({ to: "/" });
+    if (session) {
+      void router.navigate({ to: "/" });
+      return;
+    }
+
+    const storedError = sessionStorage.getItem("astrotur:sso-error");
+    if (storedError) {
+      sessionStorage.removeItem("astrotur:sso-error");
+      setSsoError(getSsoErrorMessage(storedError));
+    }
   }, [session, router]);
 
-  useEffect(() => {
-    const ssoError = sessionStorage.getItem("astrotur:sso-error");
-    if (!ssoError) return;
-    sessionStorage.removeItem("astrotur:sso-error");
-    toast.error(`Falha no login pelo Hub: ${ssoError}`);
-  }, []);
-
-  const doLogin = async (e: string, p: string) => {
-    // Chamada à nova API Node.js/Express
-    const response = await api.post("/auth/login", { email: e, password: p });
-
-    // Armazena o Token JWT e os dados do usuário
-    if (response.data.token) {
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+  const loginWithHub = () => {
+    const hubUrl = import.meta.env.VITE_HUB_URL?.trim();
+    const hubSsoUrl = import.meta.env.VITE_HUB_SSO_URL?.trim();
+    const hubLoginPath = import.meta.env.VITE_HUB_LOGIN_PATH?.trim() || "/login";
+    if (!hubUrl && !hubSsoUrl) {
+      setSsoError("O endereço do Astrotur Hub não está configurado. Contate o administrador.");
+      return;
     }
-  };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    let destination: URL;
     try {
-      await doLogin(email, password);
-      if (remember) localStorage.setItem("astrotur:remember-email", email);
-      else localStorage.removeItem("astrotur:remember-email");
-
-      toast.success("Bem-vindo!");
-      router.navigate({ to: "/" }); // Redireciona após o login
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.message;
-      toast.error(traduzirErro(errorMsg));
-    } finally {
-      setLoading(false);
+      destination = hubSsoUrl
+        ? new URL(hubSsoUrl)
+        : new URL(hubLoginPath, (hubUrl ?? "").endsWith("/") ? hubUrl ?? "" : `${hubUrl ?? ""}/`);
+      const callbackUrl = new URL(appPath("/sso/callback"), window.location.origin).toString();
+      destination.searchParams.set("redirect_uri", callbackUrl);
+    } catch (error) {
+      console.error("URL do Astrotur Hub inválida:", error);
+      setSsoError("Não foi possível iniciar o acesso pelo Astrotur Hub. Contate o administrador.");
+      return;
     }
+
+    setLoading(true);
+    window.location.assign(destination.toString());
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md p-8 bg-card border-border">
-        <div className="text-center mb-8">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md border-border bg-card p-8">
+        <div className="mb-8 text-center">
           <h1 className="text-3xl font-extrabold tracking-tight">
             <span className="text-primary">ASTRO</span>
             <span className="text-foreground">TUR</span>
           </h1>
-          <p className="text-xs text-muted-foreground mt-1 uppercase tracking-[0.3em]">Patrimônio</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.3em] text-muted-foreground">Patrimônio</p>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-5 text-center">
           <div>
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
-          </div>
-          <div>
-            <Label htmlFor="password">Senha</Label>
-            <div className="relative">
-              <Input id="password" type={showPwd ? "text" : "password"} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="pr-10" />
-              <button type="button" onClick={() => setShowPwd((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Mostrar/ocultar senha">
-                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between -mt-1">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-              <Checkbox checked={remember} onCheckedChange={(v) => setRemember(!!v)} />
-              Lembrar de mim
-            </label>
-            <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
-              Esqueci minha senha
-            </Link>
+            <h2 className="text-lg font-semibold">Acesso corporativo</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Entre com sua conta corporativa pelo Astrotur Hub.
+            </p>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
-            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Entrar
+          {ssoError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-left text-sm text-destructive" role="alert">
+              {ssoError}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={loginWithHub}
+            disabled={loading}
+            className="w-full bg-primary hover:bg-primary/90"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            Entrar com Astrotur Hub
           </Button>
 
-          <Link to="/signup" className="block w-full text-center text-sm text-muted-foreground hover:text-foreground">
-            Não tem conta? <span className="text-primary font-medium">Criar uma</span>
-          </Link>
-        </form>
-
-        <div className="mt-6 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-          Acesso administrativo via API autohospedada Astrotur.
+          <p className="text-xs text-muted-foreground">
+            A autenticação é realizada de forma segura pelo sistema corporativo.
+          </p>
         </div>
       </Card>
-    </div>
+    </main>
   );
-}
-
-function traduzirErro(msg: string) {
-  if (!msg) return "Erro ao autenticar";
-  if (msg.includes("Invalid login") || msg.includes("inválida") || msg.includes("não encontrado")) return "E-mail ou senha incorretos";
-  if (msg.includes("already registered")) return "Este e-mail já está cadastrado";
-  if (msg.includes("Password should")) return "A senha deve ter pelo menos 6 caracteres";
-  if (msg.includes("Email")) return "E-mail inválido";
-  return msg;
 }

@@ -12,6 +12,9 @@ services:
       dockerfile: Dockerfile.prod
       args:
         VITE_API_URL: /api
+        VITE_HUB_URL: ${VITE_HUB_URL:-}
+        VITE_HUB_SSO_URL: ${VITE_HUB_SSO_URL:-}
+        VITE_HUB_LOGIN_PATH: ${VITE_HUB_LOGIN_PATH:-/login}
     ports: !reset []
 
   caddy:
