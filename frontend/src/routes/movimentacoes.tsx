@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api } from "@/services/api";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowRightLeft, Plus, Loader2, Filter, X } from "lucide-react";
+import { ArrowRightLeft, Plus, Loader2, Filter, X, Eye } from "lucide-react";
 import { ReportActions } from "@/components/ReportActions";
+import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
 
 export const Route = createFileRoute("/movimentacoes")({ component: MovPage });
 
@@ -24,6 +25,7 @@ function MovPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ patrimonio_id: "", setor_destino_id: "", responsavel_destino_id: "", localizacao_destino: "", motivo: "", observacoes: "" });
 
   // Filtros
@@ -189,11 +191,11 @@ function MovPage() {
               <TableRow>
                 <TableHead>Data</TableHead><TableHead>Patrimônio</TableHead>
                 <TableHead>Setor (de → para)</TableHead><TableHead>Responsável (de → para)</TableHead>
-                <TableHead>Localização</TableHead><TableHead>Motivo</TableHead>
+                <TableHead>Localização</TableHead><TableHead>Motivo</TableHead><TableHead className="text-right">Detalhes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtradas.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma movimentação encontrada</TableCell></TableRow>
+              {filtradas.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma movimentação encontrada</TableCell></TableRow>
                 : filtradas.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="text-xs whitespace-nowrap">{new Date(m.data_movimentacao).toLocaleString("pt-BR")}</TableCell>
@@ -202,12 +204,34 @@ function MovPage() {
                   <TableCell className="text-sm">{m.resp_origem?.nome ?? "—"} <span className="text-muted-foreground">→</span> {m.resp_destino?.nome ?? "—"}</TableCell>
                   <TableCell className="text-sm">{m.localizacao_origem ?? "—"} <span className="text-muted-foreground">→</span> {m.localizacao_destino ?? "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{m.motivo ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" aria-label="Ver detalhes da movimentação" title="Ver detalhes" onClick={() => setSelected(m)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </Card>
+      <RecordDetailsDialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => { if (!open) setSelected(null); }}
+        title="Detalhes da movimentação"
+        description={selected?.patrimonios ? `${selected.patrimonios.codigo ?? "—"} — ${selected.patrimonios.nome ?? "—"}` : undefined}
+        details={selected ? [
+          { label: "Data", value: selected.data_movimentacao ? new Date(selected.data_movimentacao).toLocaleString("pt-BR") : "—" },
+          { label: "Setor de origem", value: selected.origem?.nome },
+          { label: "Setor de destino", value: selected.destino?.nome },
+          { label: "Responsável de origem", value: selected.resp_origem?.nome },
+          { label: "Responsável de destino", value: selected.resp_destino?.nome },
+          { label: "Localização de origem", value: selected.localizacao_origem },
+          { label: "Localização de destino", value: selected.localizacao_destino },
+          { label: "Motivo", value: selected.motivo },
+          { label: "Observações", value: selected.observacoes },
+        ] : []}
+      />
     </AppLayout>
   );
 }

@@ -5,13 +5,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
 import { useEffect, useState } from "react";
-import { History } from "lucide-react";
+import { Eye, History } from "lucide-react";
 import { ReportActions } from "@/components/ReportActions";
+import { Button } from "@/components/ui/button";
+import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
 
 export const Route = createFileRoute("/historico")({ component: Page });
 
 function Page() {
   const [rows, setRows] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any | null>(null);
   useEffect(() => {
     api.get("/historico", { params: { limit: 200 } })
       .then(({ data }) => setRows(data ?? []))
@@ -31,21 +34,38 @@ function Page() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>Data</TableHead><TableHead>Patrimônio</TableHead>
-            <TableHead>Ação</TableHead><TableHead>Descrição</TableHead>
+            <TableHead>Ação</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Detalhes</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhum registro</TableCell></TableRow>
+            {rows.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum registro</TableCell></TableRow>
               : rows.map((h) => (
               <TableRow key={h.id}>
                 <TableCell className="text-xs">{new Date(h.created_at).toLocaleString("pt-BR")}</TableCell>
                 <TableCell className="font-mono text-primary text-xs">{h.patrimonios?.codigo} — {h.patrimonios?.nome}</TableCell>
                 <TableCell><Badge variant="outline">{h.acao}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{h.descricao}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" aria-label="Ver detalhes do histórico" title="Ver detalhes" onClick={() => setSelected(h)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+      <RecordDetailsDialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => { if (!open) setSelected(null); }}
+        title="Detalhes do histórico"
+        description={selected?.patrimonios ? `${selected.patrimonios.codigo ?? "—"} — ${selected.patrimonios.nome ?? "—"}` : undefined}
+        details={selected ? [
+          { label: "Data", value: selected.created_at ? new Date(selected.created_at).toLocaleString("pt-BR") : "—" },
+          { label: "Ação", value: selected.acao },
+          { label: "Descrição", value: selected.descricao },
+          { label: "Responsável (ID)", value: selected.usuario_id },
+        ] : []}
+      />
     </AppLayout>
   );
 }

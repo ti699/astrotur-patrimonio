@@ -13,8 +13,9 @@ import { api } from "@/services/api";
 import { formatBRL } from "@/lib/categorias";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Wrench, Plus, Loader2 } from "lucide-react";
+import { Wrench, Plus, Loader2, Eye } from "lucide-react";
 import { ReportActions } from "@/components/ReportActions";
+import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
 
 export const Route = createFileRoute("/manutencoes")({ component: Page });
 
@@ -23,6 +24,7 @@ function Page() {
   const [patrimonios, setPatrimonios] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ patrimonio_id: "", tipo: "Corretiva", descricao: "", tecnico: "", fornecedor: "", custo: "", data_inicio: new Date().toISOString().slice(0,10), data_conclusao: "", status: "Em andamento" });
 
   const load = async () => {
@@ -113,10 +115,10 @@ function Page() {
           <TableHeader><TableRow>
             <TableHead>Início</TableHead><TableHead>Patrimônio</TableHead>
             <TableHead>Tipo</TableHead><TableHead>Técnico</TableHead>
-            <TableHead>Custo</TableHead><TableHead>Status</TableHead>
+            <TableHead>Custo</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Detalhes</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma manutenção registrada</TableCell></TableRow>
+            {rows.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma manutenção registrada</TableCell></TableRow>
               : rows.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="text-xs">{new Date(m.data_inicio).toLocaleDateString("pt-BR")}</TableCell>
@@ -125,11 +127,33 @@ function Page() {
                 <TableCell className="text-sm">{m.tecnico ?? "—"}</TableCell>
                 <TableCell>{formatBRL(m.custo)}</TableCell>
                 <TableCell><Badge variant="outline">{m.status}</Badge></TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" aria-label="Ver detalhes da manutenção" title="Ver detalhes" onClick={() => setSelected(m)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+      <RecordDetailsDialog
+        open={Boolean(selected)}
+        onOpenChange={(open) => { if (!open) setSelected(null); }}
+        title="Detalhes da manutenção"
+        description={selected?.patrimonios ? `${selected.patrimonios.codigo ?? "—"} — ${selected.patrimonios.nome ?? "—"}` : undefined}
+        details={selected ? [
+          { label: "Início", value: selected.data_inicio ? new Date(selected.data_inicio).toLocaleDateString("pt-BR") : "—" },
+          { label: "Conclusão", value: selected.data_conclusao ? new Date(selected.data_conclusao).toLocaleDateString("pt-BR") : "—" },
+          { label: "Tipo", value: selected.tipo },
+          { label: "Status", value: selected.status },
+          { label: "Técnico", value: selected.tecnico },
+          { label: "Fornecedor", value: selected.fornecedor },
+          { label: "Custo", value: formatBRL(selected.custo) },
+          { label: "Descrição", value: selected.descricao },
+          { label: "Observações", value: selected.observacoes },
+        ] : []}
+      />
     </AppLayout>
   );
 }

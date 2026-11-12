@@ -14,9 +14,10 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   ClipboardCheck, Play, CheckCircle2, XCircle, AlertTriangle, Wrench,
-  Clock, FileDown, FileSpreadsheet, Filter, X, Loader2,
+  Clock, FileDown, FileSpreadsheet, Filter, X, Loader2, Eye,
 } from "lucide-react";
 import { exportCSV, exportPDF } from "@/lib/relatorios";
+import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
 
 export const Route = createFileRoute("/inventario")({ component: InventarioPage });
 
@@ -35,6 +36,8 @@ function InventarioPage() {
   const [setores, setSetores] = useState<any[]>([]);
   const [responsaveis, setResponsaveis] = useState<any[]>([]);
   const [verificacoes, setVerificacoes] = useState<Record<string, any>>({}); // patrimonio_id -> registro da sessão atual
+  const [ultimasVerificacoes, setUltimasVerificacoes] = useState<Record<string, any>>({});
+  const [verificacaoSelecionada, setVerificacaoSelecionada] = useState<{ item: any; registro: any } | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessaoId, setSessaoId] = useState<string | null>(null);
   const [sessaoIniciadaEm, setSessaoIniciadaEm] = useState<Date | null>(null);
@@ -55,10 +58,20 @@ function InventarioPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [p, s, r] = await Promise.all([api.get("/patrimonios"), api.get("/setores"), api.get("/responsaveis")]);
+      const [p, s, r, inventarios] = await Promise.all([
+        api.get("/patrimonios"),
+        api.get("/setores"),
+        api.get("/responsaveis"),
+        api.get("/inventarios"),
+      ]);
       setPatrimonios(p.data ?? []);
       setSetores(s.data ?? []);
       setResponsaveis(r.data ?? []);
+      const ultimas: Record<string, any> = {};
+      (inventarios.data ?? []).forEach((registro: any) => {
+        if (!ultimas[registro.patrimonio_id]) ultimas[registro.patrimonio_id] = registro;
+      });
+      setUltimasVerificacoes(ultimas);
 
       // Restaura sessão ativa do localStorage
       const saved = localStorage.getItem("inv_sessao");
@@ -299,7 +312,7 @@ function InventarioPage() {
                 <TableHead>Código</TableHead><TableHead>Nome</TableHead>
                 <TableHead>Categoria</TableHead><TableHead>Setor</TableHead>
                 <TableHead>Responsável</TableHead><TableHead>Status</TableHead>
-                <TableHead className="text-right">Ação</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -326,12 +339,24 @@ function InventarioPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant={v ? "outline" : "default"}
-                        className={v ? "" : "bg-primary hover:bg-primary/90"}
-                        disabled={!sessaoId}
-                        onClick={() => abrirVerificacao(p)}>
-                        {v ? "Editar" : "Verificar"}
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Ver última verificação de ${p.nome}`}
+                          title="Ver última verificação"
+                          onClick={() => setVerificacaoSelecionada({ item: p, registro: v ?? ultimasVerificacoes[p.id] ?? null })}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant={v ? "outline" : "default"}
+                          className={v ? "" : "bg-primary hover:bg-primary/90"}
+                          disabled={!sessaoId}
+                          title={!sessaoId ? "Inicie um inventário para registrar uma verificação" : undefined}
+                          onClick={() => abrirVerificacao(p)}>
+                          {v ? "Editar" : "Verificar"}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -375,6 +400,23 @@ function InventarioPage() {
           )}
         </DialogContent>
       </Dialog>
+      <RecordDetailsDialog
+        open={Boolean(verificacaoSelecionada)}
+        onOpenChange={(isOpen) => { if (!isOpen) setVerificacaoSelecionada(null); }}
+        title="Detalhes da verificação"
+        description={verificacaoSelecionada
+          ? `${verificacaoSelecionada.item.codigo} — ${verificacaoSelecionada.item.nome}`
+          : undefined}
+        details={verificacaoSelecionada ? [
+          { label: "Status da conferência", value: verificacaoSelecionada.registro?.status_verificacao ?? "Sem verificação registrada" },
+          { label: "Data da verificação", value: verificacaoSelecionada.registro?.data_verificacao ? new Date(verificacaoSelecionada.registro.data_verificacao).toLocaleString("pt-BR") : "—" },
+          { label: "Observação", value: verificacaoSelecionada.registro?.observacao },
+          { label: "ID da sessão", value: verificacaoSelecionada.registro?.sessao_id },
+          { label: "Setor", value: verificacaoSelecionada.item.setor?.nome },
+          { label: "Responsável", value: verificacaoSelecionada.item.responsavel?.nome },
+          { label: "Localização", value: verificacaoSelecionada.item.localizacao },
+        ] : []}
+      />
     </AppLayout>
   );
 }
