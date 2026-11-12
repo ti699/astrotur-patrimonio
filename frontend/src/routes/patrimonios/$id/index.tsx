@@ -10,6 +10,7 @@ import { formatBRL, estadoColor } from "@/lib/categorias";
 import { Pencil, FileDown, ArrowLeft, Package, QrCode, Printer, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
 import { gerarRelatorioItem } from "@/lib/relatorios";
 import { DocumentosPatrimonio } from "@/components/DocumentosPatrimonio";
+import { TermoResponsabilidadeDialog } from "@/components/TermoResponsabilidadeDialog";
 
 export const Route = createFileRoute("/patrimonios/$id/")({ component: Detail });
 
@@ -28,6 +29,7 @@ function Detail() {
   const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
   const [manutencoes, setManutencoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [termoOpen, setTermoOpen] = useState(false);
   const etiquetaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,6 +97,9 @@ function Detail() {
           </Button>
           <Button variant="outline" onClick={() => gerarRelatorioItem(item)}>
             <FileDown className="h-4 w-4 mr-2" /> Gerar relatório
+          </Button>
+          <Button variant="outline" onClick={() => setTermoOpen(true)}>
+            <FileDown className="h-4 w-4 mr-2" /> Gerar Termo de Responsabilidade
           </Button>
           <Link to="/patrimonios/$id/editar" params={{ id: item.id }}>
             <Button className="bg-primary hover:bg-primary/90"><Pencil className="h-4 w-4 mr-2" /> Editar</Button>
@@ -261,6 +266,12 @@ function Detail() {
           )}
         </Card>
       </div>
+      <TermoResponsabilidadeDialog
+        item={item}
+        open={termoOpen}
+        onOpenChange={setTermoOpen}
+        onEmitted={(event) => setHistorico((current) => [event, ...current])}
+      />
     </AppLayout>
   );
 }

@@ -95,7 +95,7 @@ export function exportPDF(title: string, html: string) {
   w.document.close();
 }
 
-export function imprimirPDF(title: string, html: string) {
+export function imprimirPDF(title: string, html: string, pageSize = "auto") {
   const frame = document.createElement("iframe");
   frame.style.position = "fixed";
   frame.style.right = "0";
@@ -105,7 +105,7 @@ export function imprimirPDF(title: string, html: string) {
   frame.style.border = "0";
   frame.srcdoc = `<!doctype html><html><head><title>${title}</title>
     <style>
-      @page{size:auto;margin:16mm}
+      @page{size:${pageSize};margin:16mm}
       body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:0}
       h1{color:#C0392B;border-bottom:3px solid #C0392B;padding-bottom:8px}
       ${reportTableStyles}

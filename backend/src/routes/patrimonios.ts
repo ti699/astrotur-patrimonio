@@ -244,4 +244,35 @@ router.post('/:id/descarte', async (req: any, res) => {
   }
 });
 
+// POST /api/patrimonios/:id/termo-responsabilidade - Registrar emissão do termo
+router.post('/:id/termo-responsabilidade', async (req: any, res) => {
+  const { id } = req.params;
+  const modelo = req.body?.modelo;
+  const responsavel = typeof req.body?.responsavel === 'string' ? req.body.responsavel.trim() : '';
+  if (!['smartphone', 'notebook'].includes(modelo) || !responsavel) {
+    return res.status(400).json({ message: 'Modelo do termo e funcionário são obrigatórios' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO historico_patrimonio (patrimonio_id, acao, descricao, usuario_id)
+       SELECT id, 'Termo de Responsabilidade', $2, $3
+       FROM patrimonios WHERE id = $1::uuid
+       RETURNING *`,
+      [
+        id,
+        `Termo de Responsabilidade (${modelo === 'smartphone' ? 'Smartphone com Plano de Dados 4G' : 'Notebook de Trabalho'}) emitido para ${responsavel}.`,
+        req.auth?.id ?? null,
+      ]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Patrimônio não encontrado' });
+    }
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao registrar a emissão do termo' });
+  }
+});
+
 export default router; // Exporta as rotas para o server.ts poder registrar
