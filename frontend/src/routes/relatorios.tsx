@@ -106,7 +106,7 @@ function Relatorios() {
     const baixaParts = [baixaData, baixaMotivo].filter(Boolean);
     return {
       ...item,
-      descricao: [item.nome, item.descricao].filter(Boolean).join(" — ") || "—",
+      descricao: item.descricao ?? "—",
       status: item.status ?? "Ativo",
       baixa_data: baixaData || "—",
       baixa_motivo: baixaMotivo || (isDescartado(item.status) ? "Motivo não encontrado" : "—"),
@@ -142,6 +142,7 @@ function Relatorios() {
 
   const cols = [
     { key: "codigo", label: "Código" },
+    { key: "nome", label: "Nome" },
     { key: "descricao", label: "Descrição" },
     { key: "categoria", label: "Categoria" },
     { key: "responsavel", label: "Responsável", fmt: (v: any) => v?.nome ?? "—" },
@@ -319,7 +320,7 @@ function Relatorios() {
         </div>
         <div className="overflow-x-auto max-h-[500px]">
           {tipo === "geral" && (
-            <table className="w-full min-w-[1100px] table-fixed text-sm">
+            <table className="w-full min-w-[1200px] table-fixed text-sm">
               <thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0">
                 <tr>{cols.map((c) => <th key={c.key} style={{ width: reportColumnWidth(c.key) }} className="px-3 py-3 text-left">{c.label}</th>)}</tr>
               </thead>
@@ -327,7 +328,8 @@ function Relatorios() {
                 {reportRows.map((i) => (
                   <tr key={i.id} className="border-t border-border">
                     <td className="whitespace-normal break-words px-3 py-2 font-mono text-primary">{i.codigo}</td>
-                    <td className="whitespace-normal break-words px-3 py-2">{i.descricao}</td>
+                    <td className="whitespace-normal break-words px-3 py-2">{i.nome}</td>
+                    <td className="whitespace-pre-wrap break-words px-3 py-2">{i.descricao}</td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.categoria}</td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.responsavel?.nome ?? "—"}</td>
                     <td className="whitespace-normal break-words px-3 py-2">{i.estado_conservacao ?? "—"}</td>
@@ -404,14 +406,15 @@ function ReportTable({ rows }: { rows: Record<string, any>[] }) {
 
 function reportColumnWidth(key: string) {
   const widths: Record<string, string> = {
-    codigo: "8%",
-    descricao: "25%",
-    categoria: "11%",
-    responsavel: "14%",
-    estado_conservacao: "10%",
-    status: "9%",
-    baixa: "15%",
-    valor_atual: "8%",
+    codigo: "7%",
+    nome: "10%",
+    descricao: "27%",
+    categoria: "10%",
+    responsavel: "12%",
+    estado_conservacao: "8%",
+    status: "8%",
+    baixa: "11%",
+    valor_atual: "7%",
   };
   return widths[key] ?? "auto";
 }

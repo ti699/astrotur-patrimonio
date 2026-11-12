@@ -12,14 +12,15 @@ function escapeHtml(value: any) {
 function tabelaHTML(rows: any[], cols: { key: string; label: string; fmt?: (v: any) => string }[]) {
   const total = rows.reduce((a, r) => a + Number(r.valor_atual ?? 0), 0);
   const widths: Record<string, string> = {
-    codigo: "8%",
-    descricao: "25%",
-    categoria: "11%",
-    responsavel: "14%",
-    estado_conservacao: "10%",
-    status: "9%",
-    baixa: "15%",
-    valor_atual: "8%",
+    codigo: "7%",
+    nome: "10%",
+    descricao: "27%",
+    categoria: "10%",
+    responsavel: "12%",
+    estado_conservacao: "8%",
+    status: "8%",
+    baixa: "11%",
+    valor_atual: "7%",
   };
   const head = cols.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("");
   const colgroup = cols.map((c) => `<col style="width:${widths[c.key] ?? `${100 / Math.max(cols.length, 1)}%`}">`).join("");
@@ -42,6 +43,7 @@ const reportTableStyles = `
   th{background:#1A1A1A;color:#fff}
   tr:nth-child(even){background:#f7f7f7}
   .column-codigo{font-family:monospace}
+  .column-descricao{white-space:pre-wrap}
   .column-valor_atual{text-align:right;white-space:nowrap}
   .status-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:#fee2e2;color:#991b1b;font-weight:700}
 `;
