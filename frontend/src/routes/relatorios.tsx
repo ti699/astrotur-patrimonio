@@ -13,6 +13,14 @@ import { FileDown, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/relatorios")({ component: Relatorios });
 
+const isDescartado = (status: unknown) => String(status ?? "").trim().toUpperCase() === "DESCARTADO";
+
+const formatarData = (value: string | null | undefined) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("pt-BR");
+};
+
 function Relatorios() {
   const [items, setItems] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
@@ -27,6 +35,7 @@ function Relatorios() {
   const [fSet, setFSet] = useState("all");
   const [fResp, setFResp] = useState("all");
   const [fEst, setFEst] = useState("all");
+  const [fStatus, setFStatus] = useState("ativos");
   const [dInicio, setDInicio] = useState("");
   const [dFim, setDFim] = useState("");
   const [vMin, setVMin] = useState("");
@@ -66,6 +75,8 @@ function Relatorios() {
   const exclusoes = useMemo(() => historicoFiltrado("EXCLUIDO"), [historico, dInicio, dFim, fCat]);
 
   const filtered = useMemo(() => items.filter((i) => {
+    if (fStatus === "ativos" && isDescartado(i.status)) return false;
+    if (fStatus === "descartados" && !isDescartado(i.status)) return false;
     if (fCat !== "all" && i.categoria !== fCat) return false;
     if (fSet !== "all" && i.setor_id !== fSet) return false;
     if (fResp !== "all" && i.responsavel_id !== fResp) return false;
@@ -76,9 +87,32 @@ function Relatorios() {
     if (vMin && v < Number(vMin)) return false;
     if (vMax && v > Number(vMax)) return false;
     return true;
-  }), [items, fCat, fSet, fResp, fEst, dInicio, dFim, vMin, vMax]);
+  }), [items, fCat, fSet, fResp, fEst, fStatus, dInicio, dFim, vMin, vMax]);
 
   const valorTotal = filtered.reduce((a, i) => a + Number(i.valor_atual ?? 0), 0);
+  const baixaPorPatrimonio = useMemo(() => {
+    const baixas = new Map<string, any>();
+    historico.forEach((entry) => {
+      if (entry.patrimonio_id && /descarte|baixa/i.test(entry.acao ?? "") && !baixas.has(entry.patrimonio_id)) {
+        baixas.set(entry.patrimonio_id, entry);
+      }
+    });
+    return baixas;
+  }, [historico]);
+  const reportRows = useMemo(() => filtered.map((item) => {
+    const baixa = baixaPorPatrimonio.get(item.id);
+    const baixaData = baixa?.created_at ? formatarData(baixa.created_at) : "";
+    const baixaMotivo = baixa?.descricao ?? "";
+    const baixaParts = [baixaData, baixaMotivo].filter(Boolean);
+    return {
+      ...item,
+      descricao: [item.nome, item.descricao].filter(Boolean).join(" — ") || "—",
+      status: item.status ?? "Ativo",
+      baixa_data: baixaData || "—",
+      baixa_motivo: baixaMotivo || (isDescartado(item.status) ? "Motivo não encontrado" : "—"),
+      baixa: baixaParts.join(" — ") || (isDescartado(item.status) ? "Motivo/data não encontrados" : "—"),
+    };
+  }), [filtered, baixaPorPatrimonio]);
 
   const inPeriod = (value: string | null | undefined) => {
     const date = (value ?? "").slice(0, 10);
@@ -108,11 +142,12 @@ function Relatorios() {
 
   const cols = [
     { key: "codigo", label: "Código" },
-    { key: "nome", label: "Nome" },
+    { key: "descricao", label: "Descrição" },
     { key: "categoria", label: "Categoria" },
-    { key: "setor", label: "Setor", fmt: (v: any) => v?.nome ?? "—" },
     { key: "responsavel", label: "Responsável", fmt: (v: any) => v?.nome ?? "—" },
-    { key: "estado_conservacao", label: "Estado" },
+    { key: "estado_conservacao", label: "Conservação" },
+    { key: "status", label: "Status" },
+    { key: "baixa", label: "Motivo/data da baixa" },
     { key: "valor_atual", label: "Valor", fmt: formatBRL },
   ];
 
@@ -145,10 +180,12 @@ function Relatorios() {
       exportCSV(rows, `relatorio-${tipo}-${Date.now()}.csv`);
       return;
     }
-    const rows = filtered.map((i) => ({
-      codigo: i.codigo, nome: i.nome, categoria: i.categoria, subcategoria: i.subcategoria,
-      setor: i.setor?.nome, responsavel: i.responsavel?.nome,
-      estado: i.estado_conservacao, valor_aquisicao: i.valor_aquisicao, valor_atual: i.valor_atual,
+    const rows = reportRows.map((i) => ({
+      codigo: i.codigo, nome: i.nome, descricao: i.descricao, categoria: i.categoria,
+      subcategoria: i.subcategoria, setor: i.setor?.nome ?? "—",
+      responsavel: i.responsavel?.nome ?? "—", estado_conservacao: i.estado_conservacao ?? "—",
+      status: i.status, baixa_data: i.baixa_data, baixa_motivo: i.baixa_motivo,
+      valor_aquisicao: i.valor_aquisicao, valor_atual: i.valor_atual,
       data_aquisicao: i.data_aquisicao, localizacao: i.localizacao,
     }));
     exportCSV(rows, `relatorio-patrimonio-${Date.now()}.csv`);
@@ -156,7 +193,7 @@ function Relatorios() {
 
   const exportarPDF = () => {
     if (tipo === "geral") {
-      gerarRelatorioTabela("Relatório Geral de Patrimônio", filtered, cols.map((c) => ({ ...c })));
+      gerarRelatorioTabela("Relatório Geral de Patrimônio", reportRows, cols.map((c) => ({ ...c })));
     } else if (tipo === "setor") {
       gerarRelatorioTabela("Relatório por Setor", aggSetor, [
         { key: "label", label: "Setor" }, { key: "qtd", label: "Quantidade" },
@@ -248,6 +285,12 @@ function Relatorios() {
               <SelectItem value="all">Todos</SelectItem>
               {ESTADOS.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
             </SelectContent></Select></div>
+          <div><Label className="text-xs">Status do patrimônio</Label>
+            <Select value={fStatus} onValueChange={setFStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="ativos">Ativos (ocultar descartados)</SelectItem>
+              <SelectItem value="all">Todos (incluir descartados)</SelectItem>
+              <SelectItem value="descartados">Somente descartados</SelectItem>
+            </SelectContent></Select></div>
           <div><Label className="text-xs">Data início</Label><Input type="date" value={dInicio} onChange={(e) => setDInicio(e.target.value)} /></div>
           <div><Label className="text-xs">Data fim</Label><Input type="date" value={dFim} onChange={(e) => setDFim(e.target.value)} /></div>
           <div><Label className="text-xs">Valor mínimo</Label><Input type="number" value={vMin} onChange={(e) => setVMin(e.target.value)} /></div>
@@ -276,20 +319,25 @@ function Relatorios() {
         </div>
         <div className="overflow-x-auto max-h-[500px]">
           {tipo === "geral" && (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[1100px] table-fixed text-sm">
               <thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0">
-                <tr>{cols.map((c) => <th key={c.key} className="px-4 py-3 text-left">{c.label}</th>)}</tr>
+                <tr>{cols.map((c) => <th key={c.key} style={{ width: reportColumnWidth(c.key) }} className="px-3 py-3 text-left">{c.label}</th>)}</tr>
               </thead>
               <tbody>
-                {filtered.map((i) => (
+                {reportRows.map((i) => (
                   <tr key={i.id} className="border-t border-border">
-                    <td className="px-4 py-2 font-mono text-primary">{i.codigo}</td>
-                    <td className="px-4 py-2">{i.nome}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{i.categoria}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{i.setor?.nome ?? "—"}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{i.responsavel?.nome ?? "—"}</td>
-                    <td className="px-4 py-2">{i.estado_conservacao}</td>
-                    <td className="px-4 py-2 text-right">{formatBRL(i.valor_atual)}</td>
+                    <td className="whitespace-normal break-words px-3 py-2 font-mono text-primary">{i.codigo}</td>
+                    <td className="whitespace-normal break-words px-3 py-2">{i.descricao}</td>
+                    <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.categoria}</td>
+                    <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.responsavel?.nome ?? "—"}</td>
+                    <td className="whitespace-normal break-words px-3 py-2">{i.estado_conservacao ?? "—"}</td>
+                    <td className="whitespace-normal break-words px-3 py-2">
+                      {isDescartado(i.status)
+                        ? <span className="inline-flex rounded-full bg-red-500/15 px-2 py-1 text-xs font-semibold text-red-400">DESCARTADO</span>
+                        : i.status}
+                    </td>
+                    <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.baixa}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right">{formatBRL(i.valor_atual)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -352,4 +400,18 @@ function Relatorios() {
 function ReportTable({ rows }: { rows: Record<string, any>[] }) {
   const keys = Object.keys(rows[0] ?? {});
   return <table className="w-full text-sm"><thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0"><tr>{keys.map((key) => <th key={key} className="px-4 py-3 text-left">{key.replaceAll("_", " ")}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-t border-border">{keys.map((key) => <td key={key} className="px-4 py-2">{row[key]}</td>)}</tr>)}{rows.length === 0 && <tr><td colSpan={Math.max(keys.length, 1)} className="text-center text-muted-foreground py-8">Nenhum registro no período</td></tr>}</tbody></table>;
+}
+
+function reportColumnWidth(key: string) {
+  const widths: Record<string, string> = {
+    codigo: "8%",
+    descricao: "25%",
+    categoria: "11%",
+    responsavel: "14%",
+    estado_conservacao: "10%",
+    status: "9%",
+    baixa: "15%",
+    valor_atual: "8%",
+  };
+  return widths[key] ?? "auto";
 }

@@ -1,5 +1,51 @@
 import { formatBRL } from "./categorias";
 
+function escapeHtml(value: any) {
+  return String(value ?? "—")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function tabelaHTML(rows: any[], cols: { key: string; label: string; fmt?: (v: any) => string }[]) {
+  const total = rows.reduce((a, r) => a + Number(r.valor_atual ?? 0), 0);
+  const widths: Record<string, string> = {
+    codigo: "8%",
+    descricao: "25%",
+    categoria: "11%",
+    responsavel: "14%",
+    estado_conservacao: "10%",
+    status: "9%",
+    baixa: "15%",
+    valor_atual: "8%",
+  };
+  const head = cols.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("");
+  const colgroup = cols.map((c) => `<col style="width:${widths[c.key] ?? `${100 / Math.max(cols.length, 1)}%`}">`).join("");
+  const body = rows.map((r) =>
+    `<tr>${cols.map((c) => {
+      const value = c.fmt ? c.fmt(r[c.key]) : r[c.key];
+      const isDiscarded = c.key === "status" && String(value ?? "").trim().toUpperCase() === "DESCARTADO";
+      const content = isDiscarded
+        ? `<span class="status-badge">${escapeHtml(value)}</span>`
+        : escapeHtml(value);
+      return `<td class="column-${escapeHtml(c.key)}">${content}</td>`;
+    }).join("")}</tr>`
+  ).join("");
+  return `<p class="meta">Total de itens: <b>${rows.length}</b> · Valor total: <b>${formatBRL(total)}</b></p><table><colgroup>${colgroup}</colgroup><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+const reportTableStyles = `
+  table{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:12px;font-size:11px}
+  th,td{padding:7px 8px;border:1px solid #ddd;text-align:left;vertical-align:top;white-space:normal;overflow-wrap:anywhere;word-break:normal}
+  th{background:#1A1A1A;color:#fff}
+  tr:nth-child(even){background:#f7f7f7}
+  .column-codigo{font-family:monospace}
+  .column-valor_atual{text-align:right;white-space:nowrap}
+  .status-badge{display:inline-block;padding:2px 6px;border-radius:999px;background:#fee2e2;color:#991b1b;font-weight:700}
+`;
+
 function escapeCsv(v: any) {
   const s = String(v ?? "");
   if (s.includes(",") || s.includes('"') || s.includes("\n")) return `"${s.replace(/"/g, '""')}"`;
@@ -29,10 +75,7 @@ export function exportPDF(title: string, html: string) {
       body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:32px;}
       h1{color:#C0392B;border-bottom:3px solid #C0392B;padding-bottom:8px}
       h2{color:#1A1A1A;margin-top:24px;font-size:14px;text-transform:uppercase;letter-spacing:1px}
-      table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
-      th,td{padding:8px;border:1px solid #ddd;text-align:left}
-      th{background:#1A1A1A;color:#fff}
-      tr:nth-child(even){background:#f7f7f7}
+      ${reportTableStyles}
       .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
       .brand{font-weight:800;font-size:24px}
       .brand .r{color:#C0392B}
@@ -63,10 +106,7 @@ export function imprimirPDF(title: string, html: string) {
       @page{size:auto;margin:16mm}
       body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:0}
       h1{color:#C0392B;border-bottom:3px solid #C0392B;padding-bottom:8px}
-      table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
-      th,td{padding:8px;border:1px solid #ddd;text-align:left}
-      th{background:#1A1A1A;color:#fff}
-      tr:nth-child(even){background:#f7f7f7}
+      ${reportTableStyles}
       .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
       .brand{font-weight:800;font-size:24px}
       .brand .r{color:#C0392B}
@@ -107,23 +147,9 @@ export function gerarRelatorioItem(item: any) {
 }
 
 export function gerarRelatorioTabela(title: string, rows: any[], cols: { key: string; label: string; fmt?: (v: any) => string }[]) {
-  const total = rows.reduce((a, r) => a + Number(r.valor_atual ?? 0), 0);
-  const head = cols.map((c) => `<th>${c.label}</th>`).join("");
-  const body = rows.map((r) =>
-    `<tr>${cols.map((c) => `<td>${c.fmt ? c.fmt(r[c.key]) : (r[c.key] ?? "—")}</td>`).join("")}</tr>`
-  ).join("");
-  const html = `
-    <p class="meta">Total de itens: <b>${rows.length}</b> · Valor total: <b>${formatBRL(total)}</b></p>
-    <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
-  `;
-  exportPDF(title, html);
+  exportPDF(title, tabelaHTML(rows, cols));
 }
 
 export function gerarTabelaHTML(rows: any[], cols: { key: string; label: string; fmt?: (v: any) => string }[]) {
-  const total = rows.reduce((a, r) => a + Number(r.valor_atual ?? 0), 0);
-  const head = cols.map((c) => `<th>${c.label}</th>`).join("");
-  const body = rows.map((r) =>
-    `<tr>${cols.map((c) => `<td>${c.fmt ? c.fmt(r[c.key]) : (r[c.key] ?? "—")}</td>`).join("")}</tr>`
-  ).join("");
-  return `<p class="meta">Total de itens: <b>${rows.length}</b> · Valor total: <b>${formatBRL(total)}</b></p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  return tabelaHTML(rows, cols);
 }
