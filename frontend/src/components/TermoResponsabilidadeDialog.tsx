@@ -127,7 +127,7 @@ function formatTermDate(value: string) {
 
 function makeDocument(model: TermModel, form: TermForm, itemCode: string) {
   const title = model === "smartphone"
-    ? "TERMO DE RESPONSABILIDADE PELA GUARDA E USO DO EQUIPAMENTO DE TRABALHO - SMARTPHONE COM PLANO DE DADOS 4G"
+    ? "TERMO DE RESPONSABILIDADE PELA GUARDA E USO DO EQUIPAMENTO DE TRABALHO - SMARTPHONE DE TRABALHO"
     : "TERMO DE RESPONSABILIDADE PELA GUARDA E USO DO EQUIPAMENTO DE TRABALHO - NOTEBOOK DE TRABALHO";
   const serialLabel = model === "smartphone" ? "Número de Série / IMEI" : "Número de Série";
   const serial = model === "smartphone" && form.imei2.trim()
@@ -278,7 +278,7 @@ export function TermoResponsabilidadeDialog({ item, open, onOpenChange, onEmitte
             <Select value={model} onValueChange={changeModel}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="smartphone">Smartphone com Plano de Dados 4G</SelectItem>
+                <SelectItem value="smartphone">Smartphone de Trabalho</SelectItem>
                 <SelectItem value="notebook">Notebook de Trabalho</SelectItem>
               </SelectContent>
             </Select>

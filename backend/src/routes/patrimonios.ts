@@ -261,7 +261,7 @@ router.post('/:id/termo-responsabilidade', async (req: any, res) => {
        RETURNING *`,
       [
         id,
-        `Termo de Responsabilidade (${modelo === 'smartphone' ? 'Smartphone com Plano de Dados 4G' : 'Notebook de Trabalho'}) emitido para ${responsavel}.`,
+        `Termo de Responsabilidade (${modelo === 'smartphone' ? 'Smartphone de Trabalho' : 'Notebook de Trabalho'}) emitido para ${responsavel}.`,
         req.auth?.id ?? null,
       ]
     );
