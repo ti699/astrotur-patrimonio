@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { api } from "@/services/api";
@@ -322,7 +322,10 @@ function Relatorios() {
           {tipo === "geral" && (
             <table className="w-full min-w-[1200px] table-fixed text-sm">
               <thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0">
-                <tr>{cols.map((c) => <th key={c.key} style={{ width: reportColumnWidth(c.key) }} className="px-3 py-3 text-left">{c.label}</th>)}</tr>
+                <tr>
+                  {cols.map((c) => <th key={c.key} style={{ width: reportColumnWidth(c.key) }} className="px-3 py-3 text-left">{c.label}</th>)}
+                  <th className="w-[8%] px-3 py-3 text-left">Ação</th>
+                </tr>
               </thead>
               <tbody>
                 {reportRows.map((i) => (
@@ -340,6 +343,11 @@ function Relatorios() {
                     </td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.baixa}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">{formatBRL(i.valor_atual)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/patrimonios/$id" params={{ id: i.id }}>Abrir</Link>
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -406,15 +414,15 @@ function ReportTable({ rows }: { rows: Record<string, any>[] }) {
 
 function reportColumnWidth(key: string) {
   const widths: Record<string, string> = {
-    codigo: "7%",
-    nome: "10%",
-    descricao: "27%",
-    categoria: "10%",
-    responsavel: "12%",
-    estado_conservacao: "8%",
-    status: "8%",
+    codigo: "6%",
+    nome: "9%",
+    descricao: "23%",
+    categoria: "9%",
+    responsavel: "11%",
+    estado_conservacao: "7%",
+    status: "7%",
     baixa: "11%",
-    valor_atual: "7%",
+    valor_atual: "9%",
   };
   return widths[key] ?? "auto";
 }
