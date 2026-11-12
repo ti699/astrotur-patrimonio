@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { api } from "@/services/api";
 import { Card } from "@/components/ui/card";
@@ -323,14 +323,23 @@ function Relatorios() {
             <table className="w-full min-w-[1200px] table-fixed text-sm">
               <thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0">
                 <tr>
-                  {cols.map((c) => <th key={c.key} style={{ width: reportColumnWidth(c.key) }} className="px-3 py-3 text-left">{c.label}</th>)}
-                  <th className="w-[8%] px-3 py-3 text-left">Ação</th>
+                  {cols.map((c) => (
+                    <Fragment key={c.key}>
+                      <th key={c.key} style={{ width: reportColumnWidth(c.key) }} className="px-3 py-3 text-left">{c.label}</th>
+                      {c.key === "codigo" && <th key="abrir" className="w-[8%] px-3 py-3 text-left">Abrir</th>}
+                    </Fragment>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {reportRows.map((i) => (
                   <tr key={i.id} className="border-t border-border">
                     <td className="whitespace-normal break-words px-3 py-2 font-mono text-primary">{i.codigo}</td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/patrimonios/$id" params={{ id: i.id }}>Abrir</Link>
+                      </Button>
+                    </td>
                     <td className="whitespace-normal break-words px-3 py-2">{i.nome}</td>
                     <td className="whitespace-pre-wrap break-words px-3 py-2">{i.descricao}</td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.categoria}</td>
@@ -343,11 +352,6 @@ function Relatorios() {
                     </td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.baixa}</td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">{formatBRL(i.valor_atual)}</td>
-                    <td className="whitespace-nowrap px-3 py-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to="/patrimonios/$id" params={{ id: i.id }}>Abrir</Link>
-                      </Button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
