@@ -3,7 +3,30 @@
 export type GarantiaStatus = "ativa" | "vencendo_30" | "vencendo_60" | "vencida" | "sem_garantia";
 
 export function getGarantiaFim(item: any): string | null {
-  return item?.data_fim_garantia ?? item?.garantia_ate ?? null;
+  const values = [item?.data_fim_garantia, item?.garantia_ate];
+  for (const value of values) {
+    if (typeof value !== "string" || !value.trim()) continue;
+    const trimmed = value.trim();
+    const datePart = trimmed.slice(0, 10);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+    if (!match) continue;
+    if (
+      trimmed.length !== 10 &&
+      (!trimmed.startsWith(`${datePart}T`) || !Number.isFinite(Date.parse(trimmed)))
+    ) {
+      continue;
+    }
+    const [, year, month, day] = match;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    if (
+      date.getFullYear() === Number(year) &&
+      date.getMonth() === Number(month) - 1 &&
+      date.getDate() === Number(day)
+    ) {
+      return datePart;
+    }
+  }
+  return null;
 }
 
 export function diasParaVencer(item: any): number | null {
@@ -11,7 +34,7 @@ export function diasParaVencer(item: any): number | null {
   if (!fim) return null;
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  const f = new Date(fim + "T00:00:00");
+  const f = new Date(`${fim}T00:00:00`);
   return Math.ceil((f.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
 }
 

@@ -441,8 +441,21 @@ function List() {
                 const dias = diasParaVencer(i);
                 const fim = getGarantiaFim(i);
                 return (
-                  <tr key={i.id} className="border-t border-border hover:bg-muted/20">
-                    <td className="px-4 py-3 font-mono text-primary">{i.codigo}</td>
+                  <tr
+                    key={i.id}
+                    className="border-t border-border cursor-pointer hover:bg-muted/20"
+                    onClick={() => router.navigate({ to: "/patrimonios/$id", params: { id: i.id } })}
+                  >
+                    <td className="px-4 py-3 font-mono text-primary">
+                      <Link
+                        to="/patrimonios/$id"
+                        params={{ id: i.id }}
+                        className="hover:underline"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {i.codigo}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 font-medium">{i.nome}</td>
                     <td className="px-4 py-3 text-muted-foreground">{i.categoria}</td>
                     <td className="px-4 py-3 text-muted-foreground">{i.setor?.nome ?? "—"}</td>
@@ -477,7 +490,7 @@ function List() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <Button
                           type="button"
@@ -489,6 +502,11 @@ function List() {
                           onClick={() => openTimeline(i)}
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to="/patrimonios/$id" params={{ id: i.id }}>
+                            Abrir
+                          </Link>
                         </Button>
                         {isAdmin && (
                           <Link
