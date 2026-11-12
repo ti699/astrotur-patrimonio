@@ -95,7 +95,13 @@ export function exportPDF(title: string, html: string) {
   w.document.close();
 }
 
-export function imprimirPDF(title: string, html: string, pageSize = "auto") {
+export function imprimirPDF(
+  title: string,
+  html: string,
+  pageSize = "auto",
+  pageMargin = "16mm",
+  includeReportHeader = true,
+) {
   const frame = document.createElement("iframe");
   frame.style.position = "fixed";
   frame.style.right = "0";
@@ -103,19 +109,19 @@ export function imprimirPDF(title: string, html: string, pageSize = "auto") {
   frame.style.width = "0";
   frame.style.height = "0";
   frame.style.border = "0";
-  frame.srcdoc = `<!doctype html><html><head><title>${title}</title>
+  frame.srcdoc = `<!doctype html><html><head><title>${includeReportHeader ? title : ""}</title>
     <style>
-      @page{size:${pageSize};margin:16mm}
-      body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:0}
-      h1{color:#C0392B;border-bottom:3px solid #C0392B;padding-bottom:8px}
+      @page{size:${pageSize};margin:${pageMargin}}
+      body{font-family:Inter,Arial,sans-serif;color:#1a1a1a;padding:0;margin:0}
+      ${includeReportHeader ? "h1{color:#C0392B;border-bottom:3px solid #C0392B;padding-bottom:8px}" : ""}
       ${reportTableStyles}
       .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
       .brand{font-weight:800;font-size:24px}
       .brand .r{color:#C0392B}
       .meta{font-size:11px;color:#666}
     </style></head><body>
-    <div class="header"><div class="brand"><span class="r">ASTRO</span>TUR</div><div class="meta">Gerado em ${new Date().toLocaleString("pt-BR")}</div></div>
-    <h1>${title}</h1>${html}
+    ${includeReportHeader ? `<div class="header"><div class="brand"><span class="r">ASTRO</span>TUR</div><div class="meta">Gerado em ${new Date().toLocaleString("pt-BR")}</div></div><h1>${title}</h1>` : ""}
+    ${html}
     </body></html>`;
   document.body.appendChild(frame);
   frame.onload = () => {

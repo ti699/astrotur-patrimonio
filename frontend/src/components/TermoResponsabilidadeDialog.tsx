@@ -125,7 +125,7 @@ function formatTermDate(value: string) {
   return `Recife, ${String(day).padStart(2, "0")} de ${months[month - 1]} de ${year}`;
 }
 
-function makeDocument(model: TermModel, form: TermForm) {
+function makeDocument(model: TermModel, form: TermForm, itemCode: string) {
   const title = model === "smartphone"
     ? "TERMO DE RESPONSABILIDADE PELA GUARDA E USO DO EQUIPAMENTO DE TRABALHO - SMARTPHONE COM PLANO DE DADOS 4G"
     : "TERMO DE RESPONSABILIDADE PELA GUARDA E USO DO EQUIPAMENTO DE TRABALHO - NOTEBOOK DE TRABALHO";
@@ -138,31 +138,40 @@ function makeDocument(model: TermModel, form: TermForm) {
       <div class="line"></div>
       <strong>Testemunha ${number}</strong>
       <div>Nome: ${escapeHtml(witness.nome) || "________________________________"}</div>
-      <div>RG: ${escapeHtml(witness.rg) || "________________"} &nbsp;&nbsp; CPF: ${escapeHtml(witness.cpf) || "________________"}</div>
+      <div>RG: ${escapeHtml(witness.rg) || "________________"} &nbsp; CPF: ${escapeHtml(witness.cpf) || "________________"}</div>
     </div>`;
   const intro = `Recebi da empresa TRANSPORTES E SERVIÇOS ASTRO LTDA (ASTROTUR), inscrita no CNPJ/MF sob o nº 41.070.889/0001-60, com sede à Av. Dr. José Rufino, Nº 151, Estância, Recife/PE, a título de empréstimo, para meu uso exclusivo, conforme determinado na lei, o equipamento especificado neste termo de responsabilidade com os acessórios ${escapeHtml(form.acessorios)}, comprometendo-me a mantê-lo em perfeito estado de conservação, pelo que declaro que:`;
 
   return `
     <style>
-      .term{font-family:Arial,sans-serif;color:#111;font-size:10.5pt;line-height:1.4}
-      .term .brand{text-align:center;font-size:21pt;font-weight:800;margin-bottom:18px}
-      .term .brand span{color:#c0392b}
-      .term h1{text-align:center;font-size:13pt;line-height:1.35;margin:0 0 20px}
-      .term .identification{border:1px solid #777;padding:10px 12px;margin-bottom:16px}
-      .term .identification div{margin:3px 0}
-      .term .intro{text-align:justify;margin:14px 0}
-      .term ol{padding-left:23px;text-align:justify}
-      .term li{padding-left:3px;margin:0 0 7px;break-inside:avoid}
-      .term .closing{text-align:justify;margin-top:18px}
-      .term .date{text-align:right;margin:22px 0}
-      .term .signatures{display:grid;grid-template-columns:1fr 1fr;gap:32px 28px;margin-top:36px;break-inside:avoid}
-      .term .signature{font-size:9.5pt;line-height:1.6;break-inside:avoid}
-      .term .line{height:1px;border-top:1px solid #222;margin-bottom:6px}
-      .term .employee{grid-column:1/-1;width:65%;margin:0 auto 8px;text-align:center}
-      @media print{.term{font-size:10pt}.term li{margin-bottom:6px}}
+      .term{font-family:Arial,sans-serif;color:#111;font-size:9pt;line-height:1.25}
+      .term-header{display:flex;justify-content:space-between;align-items:center;font-size:10px;line-height:1;margin-bottom:4px}
+      .term-header .brand{font-weight:700}
+      .term-header .brand span{color:#c0392b}
+      .term-header .asset-code{font-size:10px;color:#555}
+      .term h1{color:#111;border:0;padding:0;text-align:center;font-size:11.5pt;line-height:1.2;margin:0 0 7px}
+      .term .identification{border:1px solid #777;padding:5px 7px;margin-bottom:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+      .term .intro{text-align:justify;margin:5px 0}
+      .term ol{padding-left:20px;margin:5px 0;text-align:justify}
+      .term li{padding-left:2px;margin:0 0 2px;break-inside:avoid}
+      .term .closing{text-align:justify;margin:6px 0}
+      .term .date{text-align:right;margin:6px 0}
+      .term .signatures{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-top:4px;break-inside:avoid}
+      .term .signature{font-size:9pt;line-height:1.25;break-inside:avoid;overflow-wrap:anywhere}
+      .term .line{height:1px;border-top:1px solid #222;margin:14px 0 3px}
+      .term .employee{grid-column:1/-1;width:60%;margin:0 auto 4px;text-align:center}
+      .term .employee .line{margin-top:22px}
+      @media print{
+        .term{font-size:9pt;line-height:1.25;break-inside:avoid;page-break-inside:avoid}
+        .term li{font-size:9pt;line-height:1.25;margin-bottom:2px}
+        .term .signatures{gap:8px 18px;margin-top:4px}
+      }
     </style>
     <main class="term">
-      <header class="brand"><span>ASTRO</span>TUR</header>
+      <header class="term-header">
+        <span class="brand"><span>ASTRO</span>TUR</span>
+        <span class="asset-code">${escapeHtml(itemCode)}</span>
+      </header>
       <h1>${title}</h1>
       <section class="identification">
         <div><strong>Nome:</strong> ${escapeHtml(form.responsavel)}</div>
@@ -239,8 +248,10 @@ export function TermoResponsabilidadeDialog({ item, open, onOpenChange, onEmitte
       onEmitted(historyEvent);
       imprimirPDF(
         `Termo de Responsabilidade - ${item.codigo ?? item.nome ?? "Patrimônio"}`,
-        makeDocument(model, form),
+        makeDocument(model, form, item.codigo ?? ""),
         "A4 portrait",
+        "10mm 12mm",
+        false,
       );
       toast.success("Termo registrado no histórico. Use a opção Salvar como PDF na janela de impressão.");
       onOpenChange(false);
