@@ -1,5 +1,7 @@
 {$DOMAIN} {
 	encode gzip
+	@ssoCallback path /sso
+	redir @ssoCallback /patrimonio/sso?{http.request.uri.query} 308
 	handle /api/* {
 		reverse_proxy backend:3000
 	}

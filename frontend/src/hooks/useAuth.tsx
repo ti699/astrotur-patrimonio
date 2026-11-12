@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "@/services/api";
+import { appPath } from "@/lib/utils";
 
 export type Profile = {
   id: string;
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("user");
     setProfile(null);
     setLoading(false);
-    window.location.href = "/login";
+    window.location.href = appPath("/login");
   };
 
   // Checagem segura de localStorage no browser/SSR

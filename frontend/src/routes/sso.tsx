@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { api } from "@/services/api";
 import { useAuth, type Profile } from "@/hooks/useAuth";
+import { appPath } from "@/lib/utils";
 
 type SsoSearch = { ticket?: string };
 type SsoResponse = { token: string; user: Profile };
@@ -29,12 +30,12 @@ function SsoReceiver() {
     started.current = true;
 
     // Remove o ticket da barra de endereço e do histórico (replace, sem nova entrada)
-    window.history.replaceState(null, "", "/sso");
+    window.history.replaceState(null, "", appPath("/sso"));
 
     const finish = async () => {
       if (!ticket) {
         clearSession();
-        window.location.replace("/login");
+        window.location.replace(appPath("/login"));
         return;
       }
 
@@ -44,10 +45,10 @@ function SsoReceiver() {
         localStorage.setItem("token", data.token);
         if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
         await refreshProfile();
-        window.location.replace("/");
+        window.location.replace(appPath("/"));
       } catch {
         clearSession();
-        window.location.replace("/login");
+        window.location.replace(appPath("/login"));
       }
     };
 
