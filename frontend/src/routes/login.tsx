@@ -25,10 +25,17 @@ function Login() {
     if (session) router.navigate({ to: "/" });
   }, [session, router]);
 
+  useEffect(() => {
+    const ssoError = sessionStorage.getItem("astrotur:sso-error");
+    if (!ssoError) return;
+    sessionStorage.removeItem("astrotur:sso-error");
+    toast.error(`Falha no login pelo Hub: ${ssoError}`);
+  }, []);
+
   const doLogin = async (e: string, p: string) => {
     // Chamada à nova API Node.js/Express
     const response = await api.post("/auth/login", { email: e, password: p });
-    
+
     // Armazena o Token JWT e os dados do usuário
     if (response.data.token) {
       localStorage.setItem("token", response.data.token);
@@ -43,7 +50,7 @@ function Login() {
       await doLogin(email, password);
       if (remember) localStorage.setItem("astrotur:remember-email", email);
       else localStorage.removeItem("astrotur:remember-email");
-      
+
       toast.success("Bem-vindo!");
       router.navigate({ to: "/" }); // Redireciona após o login
     } catch (err: any) {
