@@ -87,11 +87,33 @@ interface HubUser {
   email?: unknown;
   nome?: unknown;
   name?: unknown;
+  role?: unknown;
+  perfil?: unknown;
+  is_master?: unknown;
+  setor?: unknown;
 }
 interface HubValidateResponse {
   valid?: boolean;
   user?: HubUser;
 }
+
+const isHubAdmin = (user: HubUser | undefined, email: string) => {
+  if (email === 'ti@astroturviagens.com') return true;
+  if (user?.is_master === true || user?.is_master === 1 || user?.is_master === 'true') return true;
+
+  const adminRoles = new Set([
+    'admin',
+    'administrator',
+    'administrador',
+    'master',
+    'gestor_master',
+    'gestormaster',
+  ]);
+  return [user?.role, user?.perfil].some((value) => {
+    if (typeof value !== 'string') return false;
+    return adminRoles.has(value.trim().toLowerCase().replace(/[\s-]+/g, '_'));
+  });
+};
 
 const HUB_VALIDATE_URL = process.env.HUB_SSO_VALIDATE_URL || 'http://187.127.0.219:3002/api/sso/validate';
 
@@ -131,6 +153,10 @@ router.post('/sso', async (req, res) => {
   }
 
   try {
+    const shouldBeAdmin = isHubAdmin(hub.user, hubEmail);
+    const hubSector = typeof hub.user?.setor === 'string' && hub.user.setor.trim()
+      ? hub.user.setor.trim()
+      : null;
     let result = await pool.query('SELECT * FROM users WHERE LOWER(BTRIM(email)) = $1', [hubEmail]);
 
     if (result.rows.length === 0) {
@@ -138,8 +164,13 @@ router.post('/sso', async (req, res) => {
       // Senha aleatória: contas SSO não usam login por senha
       const hash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
       result = await pool.query(
-        'INSERT INTO users (nome, email, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING *',
-        [hubName?.trim() || hubEmail.split('@')[0], hubEmail, hash, 'user']
+        'INSERT INTO users (nome, email, password_hash, role, setor) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [hubName?.trim() || hubEmail.split('@')[0], hubEmail, hash, shouldBeAdmin ? 'admin' : 'user', hubSector]
+      );
+    } else if (shouldBeAdmin || hubSector) {
+      result = await pool.query(
+        'UPDATE users SET role = CASE WHEN $1 THEN $2 ELSE role END, setor = COALESCE($3, setor) WHERE id = $4 RETURNING *',
+        [shouldBeAdmin, 'admin', hubSector, result.rows[0].id]
       );
     }
 

@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path'; // <--- Importado para manipular os caminhos de arquivos
 import authRoutes from './routes/auth';
+import usersRoutes from './routes/users';
 import patrimoniosRoutes from './routes/patrimonios';
 import setoresRoutes from './routes/setores';
 import responsaveisRoutes from './routes/responsaveis';
@@ -35,6 +36,7 @@ app.use('/uploads', authenticateCookie, express.static(path.join(__dirname, '../
 
 // Registar Rotas da API
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/patrimonios', authenticate, patrimoniosRoutes);
 app.use('/api/setores', authenticate, setoresRoutes);
 app.use('/api/responsaveis', authenticate, responsaveisRoutes);
