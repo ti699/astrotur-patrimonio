@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
+import { isCorporateEmail } from '../utils/email';
 
 const router = Router();
 
@@ -26,13 +27,17 @@ router.get('/users', async (_req, res) => {
 
 router.post('/users', async (req, res) => {
   const { nome, email, password, cargo, setor, role } = req.body;
+  if (typeof email !== 'string' || !isCorporateEmail(email)) {
+    return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
+  }
   if (!nome || !email || !password || String(password).length < 6) return res.status(400).json({ message: 'Dados inválidos' });
   try {
-    const exists = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+    const normalizedEmail = email.trim().toLowerCase();
+    const exists = await pool.query('SELECT 1 FROM users WHERE LOWER(BTRIM(email)) = $1', [normalizedEmail]);
     if (exists.rows.length > 0) return res.status(400).json({ message: 'Este e-mail já está cadastrado' });
     const result = await pool.query(
       `INSERT INTO users (nome, email, password_hash, role, cargo, setor) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${USER_COLS}`,
-      [nome, email, await bcrypt.hash(password, 10), role === 'admin' ? 'admin' : 'user', cargo || null, setor || null]
+      [nome, normalizedEmail, await bcrypt.hash(password, 10), role === 'admin' ? 'admin' : 'user', cargo || null, setor || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -42,15 +47,29 @@ router.post('/users', async (req, res) => {
 });
 
 router.put('/users/:id', async (req: any, res) => {
-  const { nome, cargo, setor, role, status } = req.body;
+  const { nome, email, cargo, setor, role, status } = req.body;
+  let normalizedEmail: string | null = null;
+  if (email !== undefined) {
+    if (typeof email !== 'string' || !isCorporateEmail(email)) {
+      return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
+    }
+    normalizedEmail = email.trim().toLowerCase();
+  }
   if (req.params.id === req.auth.id && (role === 'user' || status === 'inactive')) {
     return res.status(400).json({ message: 'Não é possível remover o seu próprio acesso de administrador' });
   }
   try {
+    if (normalizedEmail) {
+      const exists = await pool.query(
+        'SELECT 1 FROM users WHERE LOWER(BTRIM(email)) = $1 AND id <> $2',
+        [normalizedEmail, req.params.id]
+      );
+      if (exists.rows.length > 0) return res.status(400).json({ message: 'Este e-mail já está cadastrado' });
+    }
     const result = await pool.query(
-      `UPDATE users SET nome = COALESCE($1, nome), cargo = COALESCE($2, cargo), setor = COALESCE($3, setor),
-        role = COALESCE($4, role), status = COALESCE($5, status) WHERE id = $6 RETURNING ${USER_COLS}`,
-      [nome ?? null, cargo ?? null, setor ?? null, role ?? null, status ?? null, req.params.id]
+      `UPDATE users SET nome = COALESCE($1, nome), email = COALESCE($2, email), cargo = COALESCE($3, cargo), setor = COALESCE($4, setor),
+        role = COALESCE($5, role), status = COALESCE($6, status) WHERE id = $7 RETURNING ${USER_COLS}`,
+      [nome ?? null, normalizedEmail, cargo ?? null, setor ?? null, role ?? null, status ?? null, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Utilizador não encontrado' });
     res.json(result.rows[0]);

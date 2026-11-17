@@ -16,6 +16,9 @@ function getSsoErrorMessage(message: string) {
   if (normalized.includes("desativ") || normalized.includes("permiss")) {
     return "Sua conta não tem permissão para acessar o Patrimônio. Solicite acesso ao administrador.";
   }
+  if (normalized.includes("domínio") || normalized.includes("dominio")) {
+    return "Apenas e-mails dos domínios corporativos Astrotur podem acessar o Patrimônio.";
+  }
   if (normalized.includes("indisponível") || normalized.includes("indisponivel")) {
     return "O Astrotur Hub está temporariamente indisponível. Tente novamente em instantes.";
   }

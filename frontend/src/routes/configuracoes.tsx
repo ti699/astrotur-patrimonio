@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Building2, Users as UsersIcon, Shield, SlidersHorizontal, Database, Download, Plus, CheckCircle2, XCircle } from "lucide-react";
 import { exportCSV } from "@/lib/relatorios";
+import { isCorporateEmail } from "@/lib/email";
 
 export const Route = createFileRoute("/configuracoes")({ component: ConfigPage });
 
@@ -242,15 +243,17 @@ function TabUsuarios() {
 
 function UserEditDialog({ user, onClose }: { user: ProfileRow; onClose: () => void }) {
   const [nome, setNome] = useState(user.nome);
+  const [email, setEmail] = useState(user.email);
   const [cargo, setCargo] = useState(user.cargo ?? "");
   const [setor, setSetor] = useState(user.setor ?? "");
   const [role, setRole] = useState<"admin" | "user">(user.role);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
+    if (!isCorporateEmail(email)) return toast.error("Use um e-mail corporativo Astrotur válido");
     setSaving(true);
     try {
-      await api.put(`/admin/users/${user.id}`, { nome, cargo, setor, role });
+      await api.put(`/admin/users/${user.id}`, { nome, email, cargo, setor, role });
       toast.success("Usuário atualizado!"); onClose();
     } catch (e: any) { toast.error(e?.response?.data?.message ?? "Erro ao atualizar"); }
     setSaving(false);
@@ -262,6 +265,11 @@ function UserEditDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
         <AlertDialogHeader><AlertDialogTitle>Editar usuário</AlertDialogTitle></AlertDialogHeader>
         <div className="space-y-3">
           <div><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+          <div>
+            <Label>E-mail</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <p className="mt-1 text-xs text-muted-foreground">Domínios aceitos: @astroturviagens.com, @grupoastrotur.com.br e @transastro.com.br</p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Cargo</Label><Input value={cargo} onChange={(e) => setCargo(e.target.value)} /></div>
             <div><Label>Setor</Label><Input value={setor} onChange={(e) => setSetor(e.target.value)} /></div>
@@ -295,7 +303,7 @@ function NewUserDialog({ onClose }: { onClose: () => void }) {
 
   const save = async () => {
     if (!form.nome.trim()) return toast.error("Nome é obrigatório");
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return toast.error("E-mail inválido");
+    if (!isCorporateEmail(form.email)) return toast.error("Use um e-mail corporativo Astrotur válido");
     if (form.password.length < 6) return toast.error("Senha mínima 6 caracteres");
     setSaving(true);
     try {
@@ -312,6 +320,7 @@ function NewUserDialog({ onClose }: { onClose: () => void }) {
         <div className="space-y-3">
           <div><Label>Nome *</Label><Input value={form.nome} onChange={(e) => set("nome")(e.target.value)} /></div>
           <div><Label>E-mail *</Label><Input type="email" value={form.email} onChange={(e) => set("email")(e.target.value)} /></div>
+          <p className="text-xs text-muted-foreground">Domínios aceitos: @astroturviagens.com, @grupoastrotur.com.br e @transastro.com.br</p>
           <div><Label>Senha provisória *</Label><Input type="password" value={form.password} onChange={(e) => set("password")(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Cargo</Label><Input value={form.cargo} onChange={(e) => set("cargo")(e.target.value)} /></div>

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { pool } from '../db';
 import { authenticate, JWT_SECRET, setSessionCookie, clearSessionCookie, readCookie, COOKIE_NAME } from '../middleware/auth';
+import { isCorporateEmail } from '../utils/email';
 
 const router = Router();
 
@@ -17,6 +18,9 @@ router.post('/login', async (req, res) => {
 
   try {
     const normalizedEmail = email.trim().toLowerCase();
+    if (!isCorporateEmail(normalizedEmail)) {
+      return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
+    }
     const result = await pool.query('SELECT * FROM users WHERE LOWER(BTRIM(email)) = $1', [normalizedEmail]);
 
     if (result.rows.length === 0) {
@@ -55,6 +59,9 @@ const publicUser = (u: any) => ({
 // POST /api/auth/signup - o primeiro utilizador torna-se admin
 router.post('/signup', async (req, res) => {
   const { nome, email, password, cargo, setor } = req.body;
+  if (typeof email !== 'string' || !isCorporateEmail(email)) {
+    return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
+  }
   if (!nome || !email || !password || String(password).length < 6) {
     return res.status(400).json({ message: 'Dados inválidos' });
   }
@@ -150,6 +157,9 @@ router.post('/sso', async (req, res) => {
   const hubEmail = typeof hub.user?.email === 'string' ? hub.user.email.trim().toLowerCase() : '';
   if (hub.valid !== true || !hubEmail) {
     return res.status(401).json({ message: 'Ticket inválido ou expirado' });
+  }
+  if (!isCorporateEmail(hubEmail)) {
+    return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
   }
 
   try {

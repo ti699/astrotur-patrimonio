@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from 'crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
+import { isCorporateEmail } from '../utils/email';
 
 const router = Router();
 
@@ -38,11 +39,13 @@ router.post('/sync-from-hub', async (req, res) => {
   const role = typeof req.body?.role === 'string' ? req.body.role : '';
   const setor = typeof req.body?.setor === 'string' ? req.body.setor.trim() : '';
 
+  if (!isCorporateEmail(email)) {
+    return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
+  }
+
   if (
     !nome ||
     nome.length > 255 ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-    email.length > 255 ||
     !role.trim() ||
     !setor ||
     setor.length > 100

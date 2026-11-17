@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { isCorporateEmail } from "@/lib/email";
 
 export const Route = createFileRoute("/signup")({ component: SignUp });
 
@@ -22,7 +23,7 @@ function SignUp() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome.trim()) return toast.error("Informe seu nome completo");
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) return toast.error("E-mail inválido");
+    if (!isCorporateEmail(form.email)) return toast.error("Use um e-mail corporativo Astrotur válido");
     if (form.password.length < 6) return toast.error("A senha deve ter pelo menos 6 caracteres");
     if (form.password !== form.confirm) return toast.error("As senhas não coincidem");
 
@@ -61,6 +62,7 @@ function SignUp() {
           <div>
             <Label>E-mail *</Label>
             <Input type="email" value={form.email} onChange={(e) => set("email")(e.target.value)} required />
+            <p className="mt-1 text-xs text-muted-foreground">Domínios aceitos: @astroturviagens.com, @grupoastrotur.com.br e @transastro.com.br</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
