@@ -12,9 +12,11 @@ router.get('/', async (req: any, res) => {
     const access = await getPatrimonioAccess(req.auth);
     const scope = patrimonioScope(access, 'p', 3);
     const result = await pool.query(
-      `SELECT h.*, p.categoria,
+      `SELECT h.*, p.categoria, r.nome AS responsavel_nome, u.nome AS usuario_nome,
         json_build_object('codigo', p.codigo, 'nome', p.nome, 'categoria', p.categoria) AS patrimonios
        FROM historico_patrimonio h LEFT JOIN patrimonios p ON p.id = h.patrimonio_id
+       LEFT JOIN responsaveis r ON r.id = p.responsavel_id
+       LEFT JOIN users u ON u.id = h.usuario_id
        WHERE ($1::uuid IS NULL OR h.patrimonio_id = $1::uuid) AND ${scope.clause}
        ORDER BY h.created_at DESC LIMIT $2`,
       [patrimonioId, limit, ...scope.values]

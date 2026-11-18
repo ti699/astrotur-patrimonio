@@ -27,8 +27,8 @@ function Page() {
         <div><h1 className="text-3xl font-bold flex items-center gap-3"><History className="h-7 w-7 text-primary" />Histórico</h1>
         <p className="text-sm text-muted-foreground">Histórico de alterações dos patrimônios</p></div>
         <ReportActions title="Relatório completo do Histórico" filename="relatorio-historico" rows={rows.map((h) => ({
-          data: new Date(h.created_at).toLocaleString("pt-BR"), patrimonio: `${h.patrimonios?.codigo ?? "—"} - ${h.patrimonios?.nome ?? "—"}`, acao: h.acao, descricao: h.descricao ?? "—", usuario_id: h.usuario_id ?? "—",
-        }))} columns={[{ key: "data", label: "Data" }, { key: "patrimonio", label: "Patrimônio" }, { key: "acao", label: "Ação" }, { key: "descricao", label: "Descrição" }, { key: "usuario_id", label: "Usuário" }]} />
+          data: new Date(h.created_at).toLocaleString("pt-BR"), patrimonio: `${h.patrimonios?.codigo ?? "—"} - ${h.patrimonios?.nome ?? "—"}`, acao: h.acao, descricao: h.descricao ?? "—", usuario: h.usuario_nome ?? "—",
+        }))} columns={[{ key: "data", label: "Data" }, { key: "patrimonio", label: "Patrimônio" }, { key: "acao", label: "Ação" }, { key: "descricao", label: "Descrição" }, { key: "usuario", label: "Usuário" }]} />
       </div>
       <Card className="p-0 bg-card border-border overflow-hidden">
         <Table>
@@ -63,7 +63,7 @@ function Page() {
           { label: "Data", value: selected.created_at ? new Date(selected.created_at).toLocaleString("pt-BR") : "—" },
           { label: "Ação", value: selected.acao },
           { label: "Descrição", value: selected.descricao },
-          { label: "Responsável (ID)", value: selected.usuario_id },
+          { label: "Responsável", value: selected.usuario_nome ?? selected.responsavel_nome },
         ] : []}
       />
     </AppLayout>

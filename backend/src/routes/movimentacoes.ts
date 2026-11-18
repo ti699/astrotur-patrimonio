@@ -19,6 +19,10 @@ router.get('/', async (req: any, res) => {
     const scope = patrimonioScope(access, 'p', 2);
     const result = await pool.query(
       `SELECT m.*,
+        r.nome AS responsavel_nome,
+        ro.nome AS responsavel_origem_nome,
+        rd.nome AS responsavel_destino_nome,
+        u.nome AS usuario_nome,
         json_build_object('codigo', p.codigo, 'nome', p.nome) AS patrimonios,
         json_build_object('nome', so.nome) AS origem,
         json_build_object('nome', sd.nome) AS destino,
@@ -30,6 +34,8 @@ router.get('/', async (req: any, res) => {
        LEFT JOIN setores sd ON sd.id = m.setor_destino_id
        LEFT JOIN responsaveis ro ON ro.id = m.responsavel_origem_id
        LEFT JOIN responsaveis rd ON rd.id = m.responsavel_destino_id
+       LEFT JOIN responsaveis r ON r.id = p.responsavel_id
+       LEFT JOIN users u ON u.id = m.usuario_id
        WHERE ($1::uuid IS NULL OR m.patrimonio_id = $1::uuid) AND ${scope.clause}
        ORDER BY m.data_movimentacao DESC`,
       [patrimonioId, ...scope.values]
@@ -77,8 +83,21 @@ router.post('/', async (req: any, res) => {
       `UPDATE patrimonios SET setor_id = $1, responsavel_id = $2, localizacao = $3, updated_at = NOW() WHERE id = $4`,
       [setorDestino ?? p.setor_id, respDestino ?? p.responsavel_id, locDestino ?? p.localizacao, patrimonio_id]
     );
+    const movement = await client.query(
+      `SELECT m.*, r.nome AS responsavel_nome,
+        ro.nome AS responsavel_origem_nome, rd.nome AS responsavel_destino_nome,
+        u.nome AS usuario_nome
+       FROM movimentacoes m
+       LEFT JOIN patrimonios p ON p.id = m.patrimonio_id
+       LEFT JOIN responsaveis r ON r.id = p.responsavel_id
+       LEFT JOIN responsaveis ro ON ro.id = m.responsavel_origem_id
+       LEFT JOIN responsaveis rd ON rd.id = m.responsavel_destino_id
+       LEFT JOIN users u ON u.id = m.usuario_id
+       WHERE m.id = $1`,
+      [inserted.rows[0].id]
+    );
     await client.query('COMMIT');
-    res.status(201).json(protectFinancialResponse(inserted.rows[0], access));
+    res.status(201).json(protectFinancialResponse(movement.rows[0], access));
   } catch (error) {
     if (client) await client.query('ROLLBACK');
     console.error(error);

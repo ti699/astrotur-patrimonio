@@ -46,6 +46,7 @@ type PatrimonioBaixado = {
   nome: string;
   categoria?: string | null;
   status?: string | null;
+  responsavel_nome?: string | null;
   setor?: { nome?: string | null } | null;
   responsavel?: { nome?: string | null } | null;
 };
@@ -57,6 +58,7 @@ type HistoricoBaixa = {
   descricao?: string | null;
   created_at: string;
   usuario_id?: string | null;
+  usuario_nome?: string | null;
 };
 
 function Baixas() {
@@ -383,9 +385,9 @@ function Baixas() {
                   label: "Justificativa",
                   value: selectedBaixa.baixa?.descricao ?? "Justificativa não encontrada",
                 },
-                { label: "Responsável (ID)", value: selectedBaixa.baixa?.usuario_id },
+                { label: "Registrado por", value: selectedBaixa.baixa?.usuario_nome },
                 { label: "Setor", value: selectedBaixa.setor?.nome },
-                { label: "Responsável atual", value: selectedBaixa.responsavel?.nome },
+                { label: "Responsável atual", value: selectedBaixa.responsavel_nome ?? selectedBaixa.responsavel?.nome },
               ]
             : []
         }

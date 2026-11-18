@@ -183,7 +183,7 @@ function InventarioPage() {
       Nome: p.nome,
       Categoria: p.categoria,
       Setor: p.setor?.nome ?? "",
-      Responsavel: p.responsavel?.nome ?? "",
+      Responsavel: p.responsavel_nome ?? p.responsavel?.nome ?? "",
       Localizacao: p.localizacao ?? "",
       Status: v?.status_verificacao ?? "Pendente",
       Observacao: v?.observacao ?? "",
@@ -328,7 +328,7 @@ function InventarioPage() {
                     <TableCell className="text-sm font-medium">{p.nome}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{p.categoria}</TableCell>
                     <TableCell className="text-xs">{p.setor?.nome ?? "—"}</TableCell>
-                    <TableCell className="text-xs">{p.responsavel?.nome ?? "—"}</TableCell>
+                    <TableCell className="text-xs">{p.responsavel_nome ?? p.responsavel?.nome ?? "—"}</TableCell>
                     <TableCell>
                       {status ? (
                         <Badge className={`${statusMeta[status].color} text-white border-0 gap-1`}>
@@ -377,7 +377,7 @@ function InventarioPage() {
                 <div className="font-mono text-primary">{alvo.codigo}</div>
                 <div className="font-medium">{alvo.nome}</div>
                 <div className="text-xs text-muted-foreground">
-                  {alvo.setor?.nome ?? "—"} · {alvo.responsavel?.nome ?? "—"} · {alvo.localizacao ?? "—"}
+                  {alvo.setor?.nome ?? "—"} · {alvo.responsavel_nome ?? alvo.responsavel?.nome ?? "—"} · {alvo.localizacao ?? "—"}
                 </div>
               </div>
               <div>
@@ -413,7 +413,7 @@ function InventarioPage() {
           { label: "Observação", value: verificacaoSelecionada.registro?.observacao },
           { label: "ID da sessão", value: verificacaoSelecionada.registro?.sessao_id },
           { label: "Setor", value: verificacaoSelecionada.item.setor?.nome },
-          { label: "Responsável", value: verificacaoSelecionada.item.responsavel?.nome },
+          { label: "Responsável", value: verificacaoSelecionada.item.responsavel_nome ?? verificacaoSelecionada.item.responsavel?.nome },
           { label: "Localização", value: verificacaoSelecionada.item.localizacao },
         ] : []}
       />

@@ -42,6 +42,7 @@ type TermItem = {
   nome?: string | null;
   modelo?: string | null;
   numero_serie?: string | null;
+  responsavel_nome?: string | null;
   responsavel?: { nome?: string | null } | null;
 };
 
@@ -98,7 +99,7 @@ function createForm(item: TermItem, model: TermModel): TermForm {
     modeloEquipamento: item.modelo || item.nome || "",
     numeroSerie: item.numero_serie || item.codigo || "",
     imei2: "",
-    responsavel: item.responsavel?.nome ?? "",
+    responsavel: item.responsavel_nome ?? item.responsavel?.nome ?? "",
     cpf: "",
     acessorios: accessoriesFor(model),
     data: localDateValue(),

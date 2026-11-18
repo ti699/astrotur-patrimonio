@@ -145,7 +145,7 @@ function Detail() {
             <Row label="Garantia até">{item.garantia_ate ? new Date(item.garantia_ate).toLocaleDateString("pt-BR") : "—"}</Row>
             <Row label="Fornecedor">{item.fornecedor ?? "—"}</Row>
             <Row label="Setor">{item.setor?.nome ?? "—"}</Row>
-            <Row label="Responsável">{item.responsavel?.nome ?? "—"}</Row>
+            <Row label="Responsável">{item.responsavel_nome ?? item.responsavel?.nome ?? "—"}</Row>
             <Row label="Localização">{item.localizacao ?? "—"}</Row>
           </div>
           {item.descricao && (
@@ -209,7 +209,7 @@ function Detail() {
                       {(m.origem?.nome || m.localizacao_origem) ?? "—"} <span className="text-muted-foreground">→</span> {(m.destino?.nome || m.localizacao_destino) ?? "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Responsável: {m.resp_origem?.nome ?? "—"} → {m.resp_destino?.nome ?? "—"}
+                      Responsável: {m.responsavel_origem_nome ?? m.resp_origem?.nome ?? "—"} → {m.responsavel_destino_nome ?? m.resp_destino?.nome ?? "—"}
                     </div>
                     {(m.localizacao_origem || m.localizacao_destino) && (
                       <div className="text-xs text-muted-foreground">

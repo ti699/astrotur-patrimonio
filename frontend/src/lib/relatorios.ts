@@ -150,7 +150,7 @@ export function gerarRelatorioItem(item: any, includeFinancial = true) {
     </table>` : ""}
     <h2>Alocação</h2>
     <table>
-      <tr><th>Setor</th><td>${item.setor?.nome ?? "—"}</td><th>Responsável</th><td>${item.responsavel?.nome ?? "—"}</td><th>Localização</th><td>${item.localizacao ?? "—"}</td></tr>
+      <tr><th>Setor</th><td>${item.setor?.nome ?? "—"}</td><th>Responsável</th><td>${item.responsavel_nome ?? item.responsavel?.nome ?? "—"}</td><th>Localização</th><td>${item.localizacao ?? "—"}</td></tr>
     </table>
     ${item.descricao ? `<h2>Descrição</h2><p>${item.descricao}</p>` : ""}
     ${item.observacoes ? `<h2>Observações</h2><p>${item.observacoes}</p>` : ""}

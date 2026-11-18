@@ -108,6 +108,7 @@ function Relatorios() {
     const baixaParts = [baixaData, baixaMotivo].filter(Boolean);
     return {
       ...item,
+      responsavel: item.responsavel_nome ?? item.responsavel,
       descricao: item.descricao ?? "—",
       status: item.status ?? "Ativo",
       baixa_data: baixaData || "—",
@@ -139,7 +140,7 @@ function Relatorios() {
   };
 
   const aggSetor = byGroup("setor_id", (i) => i.setor?.nome ?? "—");
-  const aggResp = byGroup("responsavel_id", (i) => i.responsavel?.nome ?? "—");
+  const aggResp = byGroup("responsavel_id", (i) => i.responsavel_nome ?? i.responsavel?.nome ?? "—");
   const aggCat = byGroup("categoria", (i) => i.categoria);
 
   const cols = [
@@ -147,7 +148,7 @@ function Relatorios() {
     { key: "nome", label: "Nome" },
     { key: "descricao", label: "Descrição" },
     { key: "categoria", label: "Categoria" },
-    { key: "responsavel", label: "Responsável", fmt: (v: any) => v?.nome ?? "—" },
+    { key: "responsavel", label: "Responsável", fmt: (v: any) => typeof v === "string" ? v : v?.nome ?? "—" },
     { key: "estado_conservacao", label: "Conservação" },
     { key: "status", label: "Status" },
     { key: "baixa", label: "Motivo/data da baixa" },
@@ -181,7 +182,7 @@ function Relatorios() {
       }) : tipo === "garantias" ? ({
         codigo: row.codigo, nome: row.nome, categoria: row.categoria, fornecedor: row.fornecedor ?? "—", garantia_ate: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero_garantia: row.numero_garantia ?? "—",
       }) : ({
-        data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: `${row.patrimonios?.codigo ?? row.codigo ?? "—"} - ${row.patrimonios?.nome ?? row.nome ?? "—"}`, descricao: row.descricao ?? "—", usuario_id: row.usuario_id ?? "—",
+        data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: `${row.patrimonios?.codigo ?? row.codigo ?? "—"} - ${row.patrimonios?.nome ?? row.nome ?? "—"}`, descricao: row.descricao ?? "—", usuario: row.usuario_nome ?? "—",
       }));
       exportCSV(rows, `relatorio-${tipo}-${Date.now()}.csv`);
       return;
@@ -189,7 +190,7 @@ function Relatorios() {
     const rows = reportRows.map((i) => ({
       codigo: i.codigo, nome: i.nome, descricao: i.descricao, categoria: i.categoria,
       subcategoria: i.subcategoria, setor: i.setor?.nome ?? "—",
-      responsavel: i.responsavel?.nome ?? "—", estado_conservacao: i.estado_conservacao ?? "—",
+      responsavel: i.responsavel_nome ?? i.responsavel?.nome ?? "—", estado_conservacao: i.estado_conservacao ?? "—",
       status: i.status, baixa_data: i.baixa_data, baixa_motivo: i.baixa_motivo,
       ...(isAdmin ? { valor_aquisicao: i.valor_aquisicao, valor_atual: i.valor_atual } : {}),
       data_aquisicao: i.data_aquisicao, localizacao: i.localizacao,
@@ -233,7 +234,7 @@ function Relatorios() {
       ]);
     } else {
       const data = tipo === "movimentacoes" ? movimentacoesFiltradas : tipo === "manutencoes" ? manutencoesFiltradas : tipo === "inventarios" ? inventariosFiltrados : tipo === "garantias" ? garantias : historicoCompleto;
-      const rows = data.map((row) => tipo === "movimentacoes" ? ({ data: new Date(row.data_movimentacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—" }) : tipo === "manutencoes" ? ({ inicio: row.data_inicio, patrimonio: row.patrimonios?.codigo ?? "—", tipo: row.tipo, tecnico: row.tecnico ?? "—", ...(isAdmin ? { custo: row.custo } : {}), status: row.status }) : tipo === "inventarios" ? ({ data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", status: row.status_verificacao, observacao: row.observacao ?? "—" }) : tipo === "garantias" ? ({ codigo: row.codigo, nome: row.nome, fornecedor: row.fornecedor ?? "—", validade: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero: row.numero_garantia ?? "—" }) : ({ data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: row.patrimonios?.codigo ?? row.codigo ?? "—", descricao: row.descricao ?? "—" }));
+      const rows = data.map((row) => tipo === "movimentacoes" ? ({ data: new Date(row.data_movimentacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—" }) : tipo === "manutencoes" ? ({ inicio: row.data_inicio, patrimonio: row.patrimonios?.codigo ?? "—", tipo: row.tipo, tecnico: row.tecnico ?? "—", ...(isAdmin ? { custo: row.custo } : {}), status: row.status }) : tipo === "inventarios" ? ({ data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", status: row.status_verificacao, observacao: row.observacao ?? "—" }) : tipo === "garantias" ? ({ codigo: row.codigo, nome: row.nome, fornecedor: row.fornecedor ?? "—", validade: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero: row.numero_garantia ?? "—" })       : ({ data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: row.patrimonios?.codigo ?? row.codigo ?? "—", descricao: row.descricao ?? "—", usuario: row.usuario_nome ?? "—" }));
       const cols = Object.keys(rows[0] ?? {}).map((key) => ({ key, label: key.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase()), fmt: key === "custo" ? formatBRL : undefined }));
       gerarRelatorioTabela(`Relatório de ${tipo}`, rows, cols);
     }
@@ -348,7 +349,7 @@ function Relatorios() {
                     <td className="whitespace-normal break-words px-3 py-2">{i.nome}</td>
                     <td className="whitespace-pre-wrap break-words px-3 py-2">{i.descricao}</td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.categoria}</td>
-                    <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.responsavel?.nome ?? "—"}</td>
+                    <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.responsavel_nome ?? i.responsavel?.nome ?? "—"}</td>
                     <td className="whitespace-normal break-words px-3 py-2">{i.estado_conservacao ?? "—"}</td>
                     <td className="whitespace-normal break-words px-3 py-2">
                       {isDescartado(i.status)

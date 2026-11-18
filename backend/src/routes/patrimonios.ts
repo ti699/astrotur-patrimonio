@@ -10,6 +10,13 @@ import {
 
 const router = Router();
 
+async function comNomeResponsavel<T extends { responsavel_id?: string | null }>(patrimonio: T) {
+  const result = patrimonio.responsavel_id
+    ? await pool.query('SELECT nome FROM responsaveis WHERE id = $1', [patrimonio.responsavel_id])
+    : { rows: [] };
+  return { ...patrimonio, responsavel_nome: result.rows[0]?.nome ?? null };
+}
+
 // O histórico nunca deve impedir o salvamento do patrimônio
 const registrarHistorico = async (patrimonioId: string, acao: string, descricao: string, usuarioId: string | null) => {
   try {
@@ -28,7 +35,7 @@ router.get('/', async (req: any, res) => {
     const access = await getPatrimonioAccess(req.auth);
     const scope = patrimonioScope(access, 'p');
     const result = await pool.query(
-      `SELECT p.*, json_build_object('nome', s.nome) AS setor,
+      `SELECT p.*, r.nome AS responsavel_nome, json_build_object('nome', s.nome) AS setor,
         json_build_object('nome', r.nome, 'cargo', r.cargo) AS responsavel
        FROM patrimonios p
        LEFT JOIN setores s ON s.id = p.setor_id
@@ -120,7 +127,7 @@ router.post('/', async (req: any, res) => {
       ]
     );
 
-    const criado = result.rows[0];
+    const criado = await comNomeResponsavel(result.rows[0]);
     await registrarHistorico(criado.id, 'Cadastro', `Patrimônio ${criado.codigo ?? ''} - ${criado.nome} cadastrado`.replace('  ', ' '), req.auth?.id ?? null);
     res.status(201).json(protectFinancialResponse(criado, access));
   } catch (error: any) {
@@ -139,7 +146,7 @@ router.get('/:id', async (req: any, res) => {
     const access = await getPatrimonioAccess(req.auth);
     const scope = patrimonioScope(access, 'p', 2);
     const result = await pool.query(
-      `SELECT p.*, json_build_object('nome', s.nome) AS setor,
+      `SELECT p.*, r.nome AS responsavel_nome, json_build_object('nome', s.nome) AS setor,
         json_build_object('nome', r.nome, 'cargo', r.cargo) AS responsavel
        FROM patrimonios p
        LEFT JOIN setores s ON s.id = p.setor_id
@@ -223,7 +230,7 @@ router.put('/:id', async (req: any, res) => {
         req.auth?.id ?? null
       );
     }
-    res.json(protectFinancialResponse(atualizado, access));
+    res.json(protectFinancialResponse(await comNomeResponsavel(atualizado), access));
   } catch (error: any) {
     if (error?.code === '23505') {
       return res.status(409).json({ message: 'Já existe um patrimônio com este código' });
@@ -295,7 +302,7 @@ router.post('/:id/descarte', async (req: any, res) => {
       [id, motivo, req.auth?.id ?? null]
     );
     await client.query('COMMIT');
-    res.json(protectFinancialResponse(atualizado.rows[0], access));
+    res.json(protectFinancialResponse(await comNomeResponsavel(atualizado.rows[0]), access));
   } catch (error) {
     if (client) await client.query('ROLLBACK');
     console.error(error);
@@ -309,12 +316,34 @@ router.post('/:id/descarte', async (req: any, res) => {
 router.post('/:id/termo-responsabilidade', async (req: any, res) => {
   const { id } = req.params;
   const modelo = req.body?.modelo;
-  const responsavel = typeof req.body?.responsavel === 'string' ? req.body.responsavel.trim() : '';
+  let responsavel = typeof req.body?.responsavel === 'string' ? req.body.responsavel.trim() : '';
   if (!['smartphone', 'notebook'].includes(modelo) || !responsavel) {
     return res.status(400).json({ message: 'Modelo do termo e funcionário são obrigatórios' });
   }
 
   try {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const requestedResponsavelId = typeof req.body?.responsavel_id === 'string'
+      ? req.body.responsavel_id.trim()
+      : null;
+    if (requestedResponsavelId && !uuidPattern.test(requestedResponsavelId)) {
+      return res.status(400).json({ message: 'Responsável inválido' });
+    }
+    const suppliedResponsavelId = typeof req.body?.responsavel_id === 'string'
+      ? requestedResponsavelId
+      : uuidPattern.test(responsavel)
+        ? responsavel
+        : null;
+    if (suppliedResponsavelId) {
+      const responsavelResult = await pool.query(
+        'SELECT nome FROM responsaveis WHERE id = $1',
+        [suppliedResponsavelId]
+      );
+      if (responsavelResult.rows.length === 0) {
+        return res.status(404).json({ message: 'Responsável não encontrado' });
+      }
+      responsavel = responsavelResult.rows[0].nome;
+    }
     const access = await getPatrimonioAccess(req.auth);
     const scope = patrimonioScope(access, 'p', 2);
     const descricaoParameter = 2 + scope.values.length;
@@ -334,7 +363,17 @@ router.post('/:id/termo-responsabilidade', async (req: any, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Patrimônio não encontrado' });
     }
-    res.status(201).json(result.rows[0]);
+    const evento = await pool.query(
+      `SELECT h.*, p.categoria, r.nome AS responsavel_nome, u.nome AS usuario_nome,
+        json_build_object('codigo', p.codigo, 'nome', p.nome, 'categoria', p.categoria) AS patrimonios
+       FROM historico_patrimonio h
+       LEFT JOIN patrimonios p ON p.id = h.patrimonio_id
+       LEFT JOIN responsaveis r ON r.id = p.responsavel_id
+       LEFT JOIN users u ON u.id = h.usuario_id
+       WHERE h.id = $1`,
+      [result.rows[0].id]
+    );
+    res.status(201).json(evento.rows[0]);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erro ao registrar a emissão do termo' });

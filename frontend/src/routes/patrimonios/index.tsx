@@ -53,6 +53,7 @@ type Patrimonio = {
   setor_id?: string | null;
   setor?: { nome?: string | null } | null;
   responsavel_id?: string | null;
+  responsavel_nome?: string | null;
   responsavel?: { nome?: string | null } | null;
   estado_conservacao?: string | null;
   valor_atual?: number | string | null;
@@ -69,6 +70,8 @@ type HistoricoEntry = {
   acao?: string | null;
   descricao?: string | null;
   created_at: string;
+  responsavel_nome?: string | null;
+  usuario_nome?: string | null;
   responsavel?: { nome?: string | null } | null;
   usuario?: { nome?: string | null } | null;
   usuario_id?: string | null;
@@ -76,6 +79,10 @@ type HistoricoEntry = {
 type MovimentacaoEntry = {
   id: string;
   data_movimentacao: string;
+  responsavel_nome?: string | null;
+  responsavel_origem_nome?: string | null;
+  responsavel_destino_nome?: string | null;
+  usuario_nome?: string | null;
   origem?: { nome?: string | null } | null;
   destino?: { nome?: string | null } | null;
   resp_origem?: { nome?: string | null } | null;
@@ -88,6 +95,8 @@ type MovimentacaoEntry = {
 };
 type ManutencaoEntry = {
   id: string;
+  responsavel_nome?: string | null;
+  usuario_nome?: string | null;
   data_inicio?: string | null;
   created_at?: string | null;
   tipo?: string | null;
@@ -225,7 +234,7 @@ function List() {
             type,
             title: action || "Alteração registrada",
             description: entry.descricao,
-            responsible: entry.responsavel?.nome ?? entry.usuario?.nome ?? entry.usuario_id ?? null,
+            responsible: entry.usuario_nome ?? entry.usuario?.nome ?? entry.responsavel_nome ?? null,
           };
         }),
         ...movements.map((movement) => ({
@@ -235,8 +244,10 @@ function List() {
           title: `${movement.origem?.nome ?? movement.localizacao_origem ?? "Origem não informada"} → ${movement.destino?.nome ?? movement.localizacao_destino ?? "Destino não informado"}`,
           description: movement.motivo ?? movement.observacoes,
           responsible:
-            [movement.resp_origem?.nome, movement.resp_destino?.nome].filter(Boolean).join(" → ") ||
-            movement.usuario_id ||
+            [movement.responsavel_origem_nome ?? movement.resp_origem?.nome,
+              movement.responsavel_destino_nome ?? movement.resp_destino?.nome]
+              .filter(Boolean).join(" → ") ||
+            movement.usuario_nome ||
             null,
         })),
         ...maintenance.map((entry) => ({
@@ -245,7 +256,7 @@ function List() {
           type: "manutencao" as const,
           title: `${entry.tipo ?? "Manutenção"}${entry.status ? ` — ${entry.status}` : ""}`,
           description: entry.descricao ?? entry.observacoes,
-          responsible: entry.tecnico ?? entry.usuario_id ?? null,
+          responsible: entry.usuario_nome ?? entry.responsavel_nome ?? entry.tecnico ?? null,
         })),
       ];
       setTimelineEvents(events);
@@ -288,7 +299,7 @@ function List() {
               nome: i.nome,
               categoria: i.categoria,
               setor: i.setor?.nome ?? "—",
-              responsavel: i.responsavel?.nome ?? "—",
+              responsavel: i.responsavel_nome ?? i.responsavel?.nome ?? "—",
               estado: i.estado_conservacao,
               ...(isAdmin ? {
                 valor_aquisicao: i.valor_aquisicao,
@@ -469,7 +480,7 @@ function List() {
                     <td className="px-4 py-3 text-muted-foreground">{i.categoria}</td>
                     <td className="px-4 py-3 text-muted-foreground">{i.setor?.nome ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {i.responsavel?.nome ?? "—"}
+                      {i.responsavel_nome ?? i.responsavel?.nome ?? "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span

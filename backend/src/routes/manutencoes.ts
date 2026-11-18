@@ -17,8 +17,11 @@ router.get('/', async (req: any, res) => {
     const access = await getPatrimonioAccess(req.auth);
     const scope = patrimonioScope(access, 'p', 2);
     const result = await pool.query(
-      `SELECT m.*, json_build_object('codigo', p.codigo, 'nome', p.nome) AS patrimonios
+      `SELECT m.*, r.nome AS responsavel_nome, u.nome AS usuario_nome,
+        json_build_object('codigo', p.codigo, 'nome', p.nome) AS patrimonios
        FROM manutencoes m LEFT JOIN patrimonios p ON p.id = m.patrimonio_id
+       LEFT JOIN responsaveis r ON r.id = p.responsavel_id
+       LEFT JOIN users u ON u.id = m.usuario_id
        WHERE ($1::uuid IS NULL OR m.patrimonio_id = $1::uuid) AND ${scope.clause}
        ORDER BY m.data_inicio DESC`,
       [patrimonioId, ...scope.values]
@@ -61,8 +64,17 @@ router.post('/', async (req: any, res) => {
     if ((b.status || 'Em andamento') === 'Em andamento') {
       await client.query(`UPDATE patrimonios SET status = 'Em manutenção', updated_at = NOW() WHERE id = $1`, [b.patrimonio_id]);
     }
+    const maintenance = await client.query(
+      `SELECT m.*, r.nome AS responsavel_nome, u.nome AS usuario_nome
+       FROM manutencoes m
+       JOIN patrimonios p ON p.id = m.patrimonio_id
+       LEFT JOIN responsaveis r ON r.id = p.responsavel_id
+       LEFT JOIN users u ON u.id = m.usuario_id
+       WHERE m.id = $1`,
+      [result.rows[0].id]
+    );
     await client.query('COMMIT');
-    res.status(201).json(protectFinancialResponse(result.rows[0], access));
+    res.status(201).json(protectFinancialResponse(maintenance.rows[0], access));
   } catch (error) {
     if (client) await client.query('ROLLBACK');
     console.error(error);

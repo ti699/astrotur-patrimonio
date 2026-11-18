@@ -93,7 +93,9 @@ function MovPage() {
         <div className="flex flex-wrap gap-2">
           <ReportActions title="Relatório completo de Movimentações" filename="relatorio-movimentacoes" rows={filtradas.map((m) => ({
             data: new Date(m.data_movimentacao).toLocaleString("pt-BR"), patrimonio: `${m.patrimonios?.codigo ?? "—"} - ${m.patrimonios?.nome ?? "—"}`,
-            setor_origem: m.origem?.nome ?? "—", setor_destino: m.destino?.nome ?? "—", responsavel_origem: m.resp_origem?.nome ?? "—", responsavel_destino: m.resp_destino?.nome ?? "—",
+            setor_origem: m.origem?.nome ?? "—", setor_destino: m.destino?.nome ?? "—",
+            responsavel_origem: m.responsavel_origem_nome ?? m.resp_origem?.nome ?? "—",
+            responsavel_destino: m.responsavel_destino_nome ?? m.resp_destino?.nome ?? "—",
             localizacao_origem: m.localizacao_origem ?? "—", localizacao_destino: m.localizacao_destino ?? "—", motivo: m.motivo ?? "—", observacoes: m.observacoes ?? "—",
           }))} columns={[
             { key: "data", label: "Data" }, { key: "patrimonio", label: "Patrimônio" }, { key: "setor_origem", label: "Setor origem" }, { key: "setor_destino", label: "Setor destino" },
@@ -201,7 +203,7 @@ function MovPage() {
                   <TableCell className="text-xs whitespace-nowrap">{new Date(m.data_movimentacao).toLocaleString("pt-BR")}</TableCell>
                   <TableCell className="font-mono text-primary text-xs">{m.patrimonios?.codigo} — {m.patrimonios?.nome}</TableCell>
                   <TableCell className="text-sm">{m.origem?.nome ?? "—"} <span className="text-muted-foreground">→</span> {m.destino?.nome ?? "—"}</TableCell>
-                  <TableCell className="text-sm">{m.resp_origem?.nome ?? "—"} <span className="text-muted-foreground">→</span> {m.resp_destino?.nome ?? "—"}</TableCell>
+                  <TableCell className="text-sm">{m.responsavel_origem_nome ?? m.resp_origem?.nome ?? "—"} <span className="text-muted-foreground">→</span> {m.responsavel_destino_nome ?? m.resp_destino?.nome ?? "—"}</TableCell>
                   <TableCell className="text-sm">{m.localizacao_origem ?? "—"} <span className="text-muted-foreground">→</span> {m.localizacao_destino ?? "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{m.motivo ?? "—"}</TableCell>
                   <TableCell className="text-right">
@@ -224,8 +226,8 @@ function MovPage() {
           { label: "Data", value: selected.data_movimentacao ? new Date(selected.data_movimentacao).toLocaleString("pt-BR") : "—" },
           { label: "Setor de origem", value: selected.origem?.nome },
           { label: "Setor de destino", value: selected.destino?.nome },
-          { label: "Responsável de origem", value: selected.resp_origem?.nome },
-          { label: "Responsável de destino", value: selected.resp_destino?.nome },
+          { label: "Responsável de origem", value: selected.responsavel_origem_nome ?? selected.resp_origem?.nome },
+          { label: "Responsável de destino", value: selected.responsavel_destino_nome ?? selected.resp_destino?.nome },
           { label: "Localização de origem", value: selected.localizacao_origem },
           { label: "Localização de destino", value: selected.localizacao_destino },
           { label: "Motivo", value: selected.motivo },
