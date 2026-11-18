@@ -11,6 +11,7 @@ import { Pencil, FileDown, ArrowLeft, Package, QrCode, Printer, ShieldCheck, Wre
 import { gerarRelatorioItem } from "@/lib/relatorios";
 import { DocumentosPatrimonio } from "@/components/DocumentosPatrimonio";
 import { TermoResponsabilidadeDialog } from "@/components/TermoResponsabilidadeDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/patrimonios/$id/")({ component: Detail });
 
@@ -23,6 +24,7 @@ const statusColor: Record<string, string> = {
 };
 
 function Detail() {
+  const { isAdmin } = useAuth();
   const { id } = useParams({ from: "/patrimonios/$id/" });
   const [item, setItem] = useState<any | null>(null);
   const [historico, setHistorico] = useState<any[]>([]);
@@ -95,7 +97,7 @@ function Detail() {
           <Button variant="outline" onClick={imprimirEtiqueta}>
             <Printer className="h-4 w-4 mr-2" /> Imprimir etiqueta
           </Button>
-          <Button variant="outline" onClick={() => gerarRelatorioItem(item)}>
+          <Button variant="outline" onClick={() => gerarRelatorioItem(item, isAdmin)}>
             <FileDown className="h-4 w-4 mr-2" /> Gerar relatório
           </Button>
           <Button variant="outline" onClick={() => setTermoOpen(true)}>
@@ -121,8 +123,12 @@ function Detail() {
               <span className={`inline-block w-2 h-2 rounded-full mr-2 ${estadoColor[item.estado_conservacao as keyof typeof estadoColor] ?? "bg-muted"}`}></span>
               {item.estado_conservacao}
             </Row>
-            <Row label="Valor de aquisição">{formatBRL(item.valor_aquisicao)}</Row>
-            <Row label="Valor atual" highlight>{formatBRL(item.valor_atual)}</Row>
+            {isAdmin && (
+              <>
+                <Row label="Valor de aquisição">{formatBRL(item.valor_aquisicao)}</Row>
+                <Row label="Valor atual" highlight>{formatBRL(item.valor_atual)}</Row>
+              </>
+            )}
           </div>
         </Card>
 
@@ -235,7 +241,7 @@ function Detail() {
                     {m.descricao && <div className="text-xs">{m.descricao}</div>}
                     <div className="text-xs text-muted-foreground">
                       {new Date(m.data_inicio).toLocaleDateString("pt-BR")}
-                      {m.custo > 0 && ` • ${formatBRL(m.custo)}`}
+                      {isAdmin && m.custo > 0 && ` • ${formatBRL(m.custo)}`}
                       {m.tecnico && ` • ${m.tecnico}`}
                     </div>
                   </div>

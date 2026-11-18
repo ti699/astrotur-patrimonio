@@ -16,10 +16,12 @@ import { toast } from "sonner";
 import { Wrench, Plus, Loader2, Eye } from "lucide-react";
 import { ReportActions } from "@/components/ReportActions";
 import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/manutencoes")({ component: Page });
 
 function Page() {
+  const { isAdmin } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [patrimonios, setPatrimonios] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -40,9 +42,11 @@ function Page() {
   const save = async () => {
     if (!form.patrimonio_id) return toast.error("Selecione o patrimônio");
     setSaving(true);
+    const { custo, ...fields } = form;
     try {
       await api.post("/manutencoes", {
-        ...form, custo: form.custo ? Number(form.custo) : 0,
+        ...fields,
+        ...(isAdmin ? { custo: custo ? Number(custo) : 0 } : {}),
         data_conclusao: form.data_conclusao || null,
       });
     } catch (e: any) {
@@ -64,10 +68,13 @@ function Page() {
         <div className="flex flex-wrap gap-2">
           <ReportActions title="Relatório completo de Manutenções" filename="relatorio-manutencoes" rows={rows.map((m) => ({
             inicio: m.data_inicio, conclusao: m.data_conclusao ?? "—", patrimonio: `${m.patrimonios?.codigo ?? "—"} - ${m.patrimonios?.nome ?? "—"}`,
-            tipo: m.tipo, descricao: m.descricao ?? "—", tecnico: m.tecnico ?? "—", fornecedor: m.fornecedor ?? "—", custo: m.custo, status: m.status, observacoes: m.observacoes ?? "—",
+            tipo: m.tipo, descricao: m.descricao ?? "—", tecnico: m.tecnico ?? "—", fornecedor: m.fornecedor ?? "—",
+            ...(isAdmin ? { custo: m.custo } : {}),
+            status: m.status, observacoes: m.observacoes ?? "—",
           }))} columns={[
             { key: "inicio", label: "Início" }, { key: "conclusao", label: "Conclusão" }, { key: "patrimonio", label: "Patrimônio" }, { key: "tipo", label: "Tipo" },
-            { key: "descricao", label: "Descrição" }, { key: "tecnico", label: "Técnico" }, { key: "fornecedor", label: "Fornecedor" }, { key: "custo", label: "Custo", fmt: formatBRL },
+            { key: "descricao", label: "Descrição" }, { key: "tecnico", label: "Técnico" }, { key: "fornecedor", label: "Fornecedor" },
+            ...(isAdmin ? [{ key: "custo", label: "Custo", fmt: formatBRL }] : []),
             { key: "status", label: "Status" }, { key: "observacoes", label: "Observações" },
           ]} />
           <Dialog open={open} onOpenChange={setOpen}>
@@ -98,7 +105,7 @@ function Page() {
                 <div><Label>Conclusão</Label><Input type="date" value={form.data_conclusao} onChange={(e) => setForm({ ...form, data_conclusao: e.target.value })} /></div>
                 <div><Label>Técnico</Label><Input value={form.tecnico} onChange={(e) => setForm({ ...form, tecnico: e.target.value })} /></div>
                 <div><Label>Fornecedor</Label><Input value={form.fornecedor} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} /></div>
-                <div className="col-span-2"><Label>Custo (R$)</Label><Input type="number" step="0.01" value={form.custo} onChange={(e) => setForm({ ...form, custo: e.target.value })} /></div>
+                {isAdmin && <div className="col-span-2"><Label>Custo (R$)</Label><Input type="number" step="0.01" value={form.custo} onChange={(e) => setForm({ ...form, custo: e.target.value })} /></div>}
               </div>
               <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} /></div>
               <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90">
@@ -115,17 +122,17 @@ function Page() {
           <TableHeader><TableRow>
             <TableHead>Início</TableHead><TableHead>Patrimônio</TableHead>
             <TableHead>Tipo</TableHead><TableHead>Técnico</TableHead>
-            <TableHead>Custo</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Detalhes</TableHead>
+            {isAdmin && <TableHead>Custo</TableHead>}<TableHead>Status</TableHead><TableHead className="text-right">Detalhes</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma manutenção registrada</TableCell></TableRow>
+            {rows.length === 0 ? <TableRow><TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-8">Nenhuma manutenção registrada</TableCell></TableRow>
               : rows.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="text-xs">{new Date(m.data_inicio).toLocaleDateString("pt-BR")}</TableCell>
                 <TableCell className="font-mono text-primary text-xs">{m.patrimonios?.codigo} — {m.patrimonios?.nome}</TableCell>
                 <TableCell>{m.tipo}</TableCell>
                 <TableCell className="text-sm">{m.tecnico ?? "—"}</TableCell>
-                <TableCell>{formatBRL(m.custo)}</TableCell>
+                {isAdmin && <TableCell>{formatBRL(m.custo)}</TableCell>}
                 <TableCell><Badge variant="outline">{m.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" aria-label="Ver detalhes da manutenção" title="Ver detalhes" onClick={() => setSelected(m)}>
@@ -149,7 +156,7 @@ function Page() {
           { label: "Status", value: selected.status },
           { label: "Técnico", value: selected.tecnico },
           { label: "Fornecedor", value: selected.fornecedor },
-          { label: "Custo", value: formatBRL(selected.custo) },
+          ...(isAdmin ? [{ label: "Custo", value: formatBRL(selected.custo) }] : []),
           { label: "Descrição", value: selected.descricao },
           { label: "Observações", value: selected.observacoes },
         ] : []}

@@ -13,12 +13,14 @@ import {
 } from "@/lib/garantias";
 import { exportCSV, gerarRelatorioTabela } from "@/lib/relatorios";
 import { ShieldX, ShieldAlert, ShieldCheck, Shield, FileText, FileDown, Search, Eye } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/garantias")({ component: Garantias });
 
 type Filtro = "all" | GarantiaStatus | "proxima";
 
 function Garantias() {
+  const { isAdmin } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ function Garantias() {
           fim: fim ?? "—",
           situacao: garantiaLabel[garantiaStatus(i)],
           dias: d === null ? "—" : d < 0 ? `Vencida há ${Math.abs(d)} d` : `${d} d`,
-          valor_atual: i.valor_atual,
+          ...(isAdmin ? { valor_atual: i.valor_atual } : {}),
         };
       }),
       [
@@ -93,7 +95,7 @@ function Garantias() {
         { key: "fim", label: "Fim" },
         { key: "situacao", label: "Situação" },
         { key: "dias", label: "Restantes" },
-        { key: "valor_atual", label: "Valor", fmt: formatBRL },
+        ...(isAdmin ? [{ key: "valor_atual", label: "Valor", fmt: formatBRL }] : []),
       ],
     );
   };
@@ -111,7 +113,7 @@ function Garantias() {
         data_fim_garantia: fim ?? "",
         situacao: garantiaLabel[garantiaStatus(i)],
         dias_restantes: d ?? "",
-        valor_atual: i.valor_atual,
+        ...(isAdmin ? { valor_atual: i.valor_atual } : {}),
       };
     }), `relatorio-garantias-${Date.now()}.csv`);
   };

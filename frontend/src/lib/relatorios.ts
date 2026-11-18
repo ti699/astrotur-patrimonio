@@ -10,7 +10,10 @@ function escapeHtml(value: any) {
 }
 
 function tabelaHTML(rows: any[], cols: { key: string; label: string; fmt?: (v: any) => string }[]) {
-  const total = rows.reduce((a, r) => a + Number(r.valor_atual ?? 0), 0);
+  const totalKey = cols.some((column) => column.key === "valor_atual")
+    ? "valor_atual"
+    : cols.some((column) => column.key === "valor") ? "valor" : null;
+  const total = totalKey ? rows.reduce((sum, row) => sum + Number(row[totalKey] ?? 0), 0) : null;
   const widths: Record<string, string> = {
     codigo: "7%",
     nome: "10%",
@@ -34,7 +37,8 @@ function tabelaHTML(rows: any[], cols: { key: string; label: string; fmt?: (v: a
       return `<td class="column-${escapeHtml(c.key)}">${content}</td>`;
     }).join("")}</tr>`
   ).join("");
-  return `<p class="meta">Total de itens: <b>${rows.length}</b> · Valor total: <b>${formatBRL(total)}</b></p><table><colgroup>${colgroup}</colgroup><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  const summary = `<p class="meta">Total de itens: <b>${rows.length}</b>${total === null ? "" : ` · Valor total: <b>${formatBRL(total)}</b>`}</p>`;
+  return `${summary}<table><colgroup>${colgroup}</colgroup><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 const reportTableStyles = `
@@ -131,7 +135,7 @@ export function imprimirPDF(
   };
 }
 
-export function gerarRelatorioItem(item: any) {
+export function gerarRelatorioItem(item: any, includeFinancial = true) {
   const html = `
     <h2>Identificação</h2>
     <table>
@@ -140,10 +144,10 @@ export function gerarRelatorioItem(item: any) {
       <tr><th>Marca</th><td>${item.marca ?? "—"}</td><th>Modelo</th><td>${item.modelo ?? "—"}</td></tr>
       <tr><th>Nº de série</th><td>${item.numero_serie ?? "—"}</td><th>Estado</th><td>${item.estado_conservacao}</td></tr>
     </table>
-    <h2>Valores</h2>
+    ${includeFinancial ? `<h2>Valores</h2>
     <table>
       <tr><th>Data aquisição</th><td>${item.data_aquisicao ?? "—"}</td><th>Valor aquisição</th><td>${formatBRL(item.valor_aquisicao)}</td><th>Valor atual</th><td>${formatBRL(item.valor_atual)}</td></tr>
-    </table>
+    </table>` : ""}
     <h2>Alocação</h2>
     <table>
       <tr><th>Setor</th><td>${item.setor?.nome ?? "—"}</td><th>Responsável</th><td>${item.responsavel?.nome ?? "—"}</td><th>Localização</th><td>${item.localizacao ?? "—"}</td></tr>

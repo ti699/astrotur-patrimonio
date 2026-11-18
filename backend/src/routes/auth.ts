@@ -122,6 +122,11 @@ const isHubAdmin = (user: HubUser | undefined, email: string) => {
   });
 };
 
+const isHubManager = (user: HubUser | undefined) =>
+  [user?.role, user?.perfil].some(
+    (value) => typeof value === 'string' && value.trim().toLowerCase().replace(/[\s-]+/g, '_') === 'gestor'
+  );
+
 const HUB_VALIDATE_URL = process.env.HUB_SSO_VALIDATE_URL || 'http://187.127.0.219:3002/api/sso/validate';
 
 // POST /api/auth/sso - troca o ticket do Hub por um JWT local
@@ -164,6 +169,7 @@ router.post('/sso', async (req, res) => {
 
   try {
     const shouldBeAdmin = isHubAdmin(hub.user, hubEmail);
+    const shouldBeManager = !shouldBeAdmin && isHubManager(hub.user);
     const hubSector = typeof hub.user?.setor === 'string' && hub.user.setor.trim()
       ? hub.user.setor.trim()
       : null;
@@ -175,12 +181,13 @@ router.post('/sso', async (req, res) => {
       const hash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
       result = await pool.query(
         'INSERT INTO users (nome, email, password_hash, role, setor) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-        [hubName?.trim() || hubEmail.split('@')[0], hubEmail, hash, shouldBeAdmin ? 'admin' : 'user', hubSector]
+        [hubName?.trim() || hubEmail.split('@')[0], hubEmail, hash, shouldBeAdmin ? 'admin' : shouldBeManager ? 'gestor' : 'user', hubSector]
       );
-    } else if (shouldBeAdmin || hubSector) {
+    } else if (shouldBeAdmin || shouldBeManager || hubSector) {
       result = await pool.query(
-        'UPDATE users SET role = CASE WHEN $1 THEN $2 ELSE role END, setor = COALESCE($3, setor) WHERE id = $4 RETURNING *',
-        [shouldBeAdmin, 'admin', hubSector, result.rows[0].id]
+        `UPDATE users SET role = CASE WHEN $1 THEN 'admin' WHEN $2 THEN 'gestor' ELSE role END,
+          setor = COALESCE($3, setor) WHERE id = $4 RETURNING *`,
+        [shouldBeAdmin, shouldBeManager, hubSector, result.rows[0].id]
       );
     }
 

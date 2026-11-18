@@ -6,7 +6,7 @@ import { isCorporateEmail } from '../utils/email';
 
 const router = Router();
 
-const normalizeRole = (role: string, email: string) => {
+const normalizeRole = (role: string, email: string): 'admin' | 'gestor' | 'user' => {
   const normalizedRole = role.trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (
     email === 'ti@astroturviagens.com' ||
@@ -14,6 +14,7 @@ const normalizeRole = (role: string, email: string) => {
   ) {
     return 'admin';
   }
+  if (normalizedRole === 'gestor') return 'gestor';
   return 'user';
 };
 

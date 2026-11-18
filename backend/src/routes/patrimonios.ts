@@ -1,5 +1,12 @@
 import { Router } from 'express';
+import type { PoolClient } from 'pg';
 import { pool } from '../db'; // Importa a conexão do PostgreSQL
+import {
+  getPatrimonioAccess,
+  hasFinancialFields,
+  patrimonioScope,
+  protectFinancialResponse,
+} from '../utils/patrimonioAccess';
 
 const router = Router();
 
@@ -16,17 +23,21 @@ const registrarHistorico = async (patrimonioId: string, acao: string, descricao:
 };
 
 // GET /api/patrimonios - Listar patrimónios
-router.get('/', async (req, res) => {
+router.get('/', async (req: any, res) => {
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    const scope = patrimonioScope(access, 'p');
     const result = await pool.query(
       `SELECT p.*, json_build_object('nome', s.nome) AS setor,
         json_build_object('nome', r.nome, 'cargo', r.cargo) AS responsavel
        FROM patrimonios p
        LEFT JOIN setores s ON s.id = p.setor_id
        LEFT JOIN responsaveis r ON r.id = p.responsavel_id
-       ORDER BY p.codigo`
+       WHERE ${scope.clause}
+       ORDER BY p.codigo`,
+      scope.values
     );
-    res.json(result.rows);
+    res.json(protectFinancialResponse(result.rows, access));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erro ao listar patrimónios' });
@@ -77,6 +88,10 @@ router.post('/', async (req: any, res) => {
   }
 
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    if (!access.isAdmin && hasFinancialFields(req.body)) {
+      return res.status(403).json({ message: 'Apenas administradores podem informar valores financeiros' });
+    }
     const codigoFinal = typeof codigo === 'string' && codigo.trim()
       ? codigo.trim()
       : await proximoCodigo(categoria.trim());
@@ -97,7 +112,8 @@ router.post('/', async (req: any, res) => {
         numero_serie || null, marca || null, modelo || null, tag_empresa || null,
         fornecedor || null, data_aquisicao || null, garantia_ate || null,
         data_compra || null, data_inicio_garantia || null, data_fim_garantia || null,
-        numero_garantia || null, valor_aquisicao ?? 0, valor_atual ?? 0,
+        numero_garantia || null, access.isAdmin ? valor_aquisicao ?? 0 : 0,
+        access.isAdmin ? valor_atual ?? 0 : 0,
         estado_conservacao || 'Bom', status || 'Em uso', responsavel_id || null,
         setor_id || null, localizacao || null, observacoes || null, foto_url || null,
         specs ?? {},
@@ -106,7 +122,7 @@ router.post('/', async (req: any, res) => {
 
     const criado = result.rows[0];
     await registrarHistorico(criado.id, 'Cadastro', `Patrimônio ${criado.codigo ?? ''} - ${criado.nome} cadastrado`.replace('  ', ' '), req.auth?.id ?? null);
-    res.status(201).json(criado);
+    res.status(201).json(protectFinancialResponse(criado, access));
   } catch (error: any) {
     if (error?.code === '23505') {
       return res.status(409).json({ message: 'Já existe um patrimônio com este código' });
@@ -117,22 +133,24 @@ router.post('/', async (req: any, res) => {
 });
 
 // GET /api/patrimonios/:id - Obter um único património
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: any, res) => {
   const { id } = req.params;
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    const scope = patrimonioScope(access, 'p', 2);
     const result = await pool.query(
       `SELECT p.*, json_build_object('nome', s.nome) AS setor,
         json_build_object('nome', r.nome, 'cargo', r.cargo) AS responsavel
        FROM patrimonios p
        LEFT JOIN setores s ON s.id = p.setor_id
        LEFT JOIN responsaveis r ON r.id = p.responsavel_id
-       WHERE p.id = $1`,
-      [id]
+       WHERE p.id = $1 AND ${scope.clause}`,
+      [id, ...scope.values]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Património não encontrado' });
     }
-    res.json(result.rows[0]);
+    res.json(protectFinancialResponse(result.rows[0], access));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erro ao procurar património' });
@@ -152,9 +170,22 @@ router.put('/:id', async (req: any, res) => {
   const codigoNovo = typeof codigo === 'string' && codigo.trim() ? codigo.trim() : null;
 
   try {
-    const anterior = await pool.query('SELECT status FROM patrimonios WHERE id = $1', [id]);
+    const access = await getPatrimonioAccess(req.auth);
+    if (!access.isAdmin && hasFinancialFields(req.body)) {
+      return res.status(403).json({ message: 'Apenas administradores podem editar valores financeiros' });
+    }
+    const scope = patrimonioScope(access, 'p', 2);
+    const anterior = await pool.query(
+      `SELECT p.status, p.valor_aquisicao, p.valor_atual FROM patrimonios p
+       WHERE p.id = $1 AND ${scope.clause}`,
+      [id, ...scope.values]
+    );
+    if (anterior.rows.length === 0) {
+      return res.status(404).json({ message: 'Património não encontrado' });
+    }
+    const updateScope = patrimonioScope(access, 'p', 28);
     const result = await pool.query(
-      `UPDATE patrimonios SET
+      `UPDATE patrimonios AS p SET
         codigo = COALESCE($1, codigo), nome = $2, categoria = $3, subcategoria = $4, descricao = $5,
         numero_serie = $6, marca = $7, modelo = $8, tag_empresa = $9, fornecedor = $10,
         data_aquisicao = $11, garantia_ate = $12, data_compra = $13,
@@ -162,16 +193,19 @@ router.put('/:id', async (req: any, res) => {
         valor_aquisicao = $17, valor_atual = $18, estado_conservacao = $19, status = $20,
         responsavel_id = $21, setor_id = $22, localizacao = $23, observacoes = $24,
         foto_url = $25, specs = $26, updated_at = NOW()
-       WHERE id = $27
+       WHERE p.id = $27 AND ${updateScope.clause}
        RETURNING *`,
       [
         codigoNovo, nome, categoria, subcategoria || null, descricao || null,
         numero_serie || null, marca || null, modelo || null, tag_empresa || null, fornecedor || null,
         data_aquisicao || null, garantia_ate || null, data_compra || null,
         data_inicio_garantia || null, data_fim_garantia || null, numero_garantia || null,
-        valor_aquisicao ?? 0, valor_atual ?? 0, estado_conservacao || 'Bom', status || 'Em uso',
+        access.isAdmin ? valor_aquisicao ?? 0 : anterior.rows[0].valor_aquisicao,
+        access.isAdmin ? valor_atual ?? 0 : anterior.rows[0].valor_atual,
+        estado_conservacao || 'Bom', status || 'Em uso',
         responsavel_id || null, setor_id || null, localizacao || null, observacoes || null,
         foto_url || null, specs ?? {}, id,
+        ...updateScope.values,
       ]
     );
 
@@ -189,13 +223,36 @@ router.put('/:id', async (req: any, res) => {
         req.auth?.id ?? null
       );
     }
-    res.json(atualizado);
+    res.json(protectFinancialResponse(atualizado, access));
   } catch (error: any) {
     if (error?.code === '23505') {
       return res.status(409).json({ message: 'Já existe um patrimônio com este código' });
     }
     console.error(error);
     res.status(500).json({ message: 'Erro ao atualizar património' });
+  }
+});
+
+// DELETE /api/patrimonios/:id - Excluir património
+router.delete('/:id', async (req: any, res) => {
+  if (!['admin', 'gestor'].includes(req.auth?.role)) {
+    return res.status(403).json({ message: 'Apenas administradores e gestores podem excluir patrimónios' });
+  }
+
+  try {
+    const access = await getPatrimonioAccess(req.auth);
+    const scope = patrimonioScope(access, 'p', 2);
+    const result = await pool.query(
+      `DELETE FROM patrimonios AS p WHERE p.id = $1 AND ${scope.clause} RETURNING p.id`,
+      [req.params.id, ...scope.values]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Património não encontrado' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao excluir património' });
   }
 });
 
@@ -207,12 +264,16 @@ router.post('/:id/descarte', async (req: any, res) => {
     return res.status(400).json({ message: 'A justificativa do descarte é obrigatória' });
   }
 
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    client = await pool.connect();
     await client.query('BEGIN');
+    const scope = patrimonioScope(access, 'p', 2);
     const patrimonio = await client.query(
-      'SELECT id, codigo, nome, status FROM patrimonios WHERE id = $1 FOR UPDATE',
-      [id]
+      `SELECT p.id, p.codigo, p.nome, p.status FROM patrimonios p
+       WHERE p.id = $1 AND ${scope.clause} FOR UPDATE`,
+      [id, ...scope.values]
     );
     if (patrimonio.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -234,13 +295,13 @@ router.post('/:id/descarte', async (req: any, res) => {
       [id, motivo, req.auth?.id ?? null]
     );
     await client.query('COMMIT');
-    res.json(atualizado.rows[0]);
+    res.json(protectFinancialResponse(atualizado.rows[0], access));
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error(error);
     res.status(500).json({ message: 'Erro ao registrar descarte/baixa' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -254,13 +315,18 @@ router.post('/:id/termo-responsabilidade', async (req: any, res) => {
   }
 
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    const scope = patrimonioScope(access, 'p', 2);
+    const descricaoParameter = 2 + scope.values.length;
+    const usuarioParameter = descricaoParameter + 1;
     const result = await pool.query(
       `INSERT INTO historico_patrimonio (patrimonio_id, acao, descricao, usuario_id)
-       SELECT id, 'Termo de Responsabilidade', $2, $3
-       FROM patrimonios WHERE id = $1::uuid
+       SELECT p.id, 'Termo de Responsabilidade', $${descricaoParameter}, $${usuarioParameter}
+       FROM patrimonios p WHERE p.id = $1::uuid AND ${scope.clause}
        RETURNING *`,
       [
         id,
+        ...scope.values,
         `Termo de Responsabilidade (${modelo === 'smartphone' ? 'Smartphone de Trabalho' : 'Notebook de Trabalho'}) emitido para ${responsavel}.`,
         req.auth?.id ?? null,
       ]

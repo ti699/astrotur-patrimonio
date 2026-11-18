@@ -10,6 +10,7 @@ import { CATEGORIAS, ESTADOS, STATUS, categoriaPrefixo, type Categoria } from "@
 import { DynamicSpecsFields } from "@/components/DynamicSpecsFields";
 import { toast } from "sonner";
 import { Loader2, Upload, X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 type Props = {
   initial?: any;
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function PatrimonioForm({ initial, onSaved }: Props) {
+  const { isAdmin } = useAuth();
   const [form, setForm] = useState<any>({
     nome: "", codigo: "", categoria: "", subcategoria: "", descricao: "",
     numero_serie: "", marca: "", modelo: "", tag_empresa: "", fornecedor: "",
@@ -87,8 +89,6 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
         data_inicio_garantia: form.data_inicio_garantia || null,
         data_fim_garantia: form.data_fim_garantia || null,
         numero_garantia: form.numero_garantia || null,
-        valor_aquisicao: form.valor_aquisicao ? Number(form.valor_aquisicao) : 0,
-        valor_atual: form.valor_atual ? Number(form.valor_atual) : 0,
         estado_conservacao: form.estado_conservacao,
         status: form.status,
         responsavel_id: form.responsavel_id || null,
@@ -97,6 +97,10 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
         observacoes: form.observacoes || null,
         foto_url,
         specs: form.specs ?? {},
+        ...(isAdmin ? {
+          valor_aquisicao: form.valor_aquisicao ? Number(form.valor_aquisicao) : 0,
+          valor_atual: form.valor_atual ? Number(form.valor_atual) : 0,
+        } : {}),
       };
 
       if (initial?.id) {
@@ -178,8 +182,12 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
             <Field label="Nº da garantia"><Input value={form.numero_garantia ?? ""} onChange={(e) => set("numero_garantia", e.target.value)} placeholder="Ex: NF/Contrato" /></Field>
             <Field label="Início da garantia"><Input type="date" value={form.data_inicio_garantia ?? ""} onChange={(e) => set("data_inicio_garantia", e.target.value)} /></Field>
             <Field label="Fim da garantia"><Input type="date" value={form.data_fim_garantia ?? ""} onChange={(e) => set("data_fim_garantia", e.target.value)} /></Field>
-            <Field label="Valor de aquisição (R$)"><Input type="number" step="0.01" value={form.valor_aquisicao ?? ""} onChange={(e) => set("valor_aquisicao", e.target.value)} /></Field>
-            <Field label="Valor atual (R$)"><Input type="number" step="0.01" value={form.valor_atual ?? ""} onChange={(e) => set("valor_atual", e.target.value)} /></Field>
+            {isAdmin && (
+              <>
+                <Field label="Valor de aquisição (R$)"><Input type="number" step="0.01" value={form.valor_aquisicao ?? ""} onChange={(e) => set("valor_aquisicao", e.target.value)} /></Field>
+                <Field label="Valor atual (R$)"><Input type="number" step="0.01" value={form.valor_atual ?? ""} onChange={(e) => set("valor_atual", e.target.value)} /></Field>
+              </>
+            )}
             <Field label="Status">
               <Select value={form.status} onValueChange={(v) => set("status", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

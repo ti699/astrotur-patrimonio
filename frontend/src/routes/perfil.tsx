@@ -80,7 +80,7 @@ function Perfil() {
         </div>
         {profile && (
           <Badge variant="outline" className="border-primary text-primary">
-            {profile.role === "admin" ? "Administrador" : "Usuário"}
+            {profile.role === "admin" ? "Administrador" : profile.role === "gestor" ? "Gestor" : "Usuário"}
           </Badge>
         )}
       </div>
@@ -112,7 +112,7 @@ function Perfil() {
             <h3 className="text-xs uppercase text-primary font-semibold mb-3 tracking-widest">Informações da Conta</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">E-mail</span><span>{user?.email}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Tipo</span><span>{profile?.role === "admin" ? "Administrador" : "Usuário comum"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Tipo</span><span>{profile?.role === "admin" ? "Administrador" : profile?.role === "gestor" ? "Gestor" : "Usuário comum"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span className="text-emerald-400">{profile?.status ?? "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Membro desde</span><span>{dataCriacao}</span></div>
             </div>

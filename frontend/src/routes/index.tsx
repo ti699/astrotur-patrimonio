@@ -8,12 +8,14 @@ import { formatBRL, estadoColor } from "@/lib/categorias";
 import { garantiaStatus } from "@/lib/garantias";
 import { Link as RouterLink } from "@tanstack/react-router";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
 
 const COLORS = ["#C0392B", "#E67E22", "#7F8C8D", "#9B59B6", "#3498DB", "#16A085"];
 
 function Dashboard() {
+  const { isAdmin } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,7 @@ function Dashboard() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard icon={Package} label="Total de Itens" value={totalItens.toString()} />
-            <StatCard icon={DollarSign} label="Valor Total" value={formatBRL(valorTotal)} />
+            {isAdmin && <StatCard icon={DollarSign} label="Valor Total" value={formatBRL(valorTotal)} />}
             <StatCard icon={Layers} label="Categorias" value={Object.keys(porCategoria).length.toString()} />
             <StatCard icon={Building2} label="Setores Ativos" value={Object.keys(porSetor).length.toString()} />
           </div>
@@ -141,12 +143,12 @@ function Dashboard() {
                     <th className="px-4 py-3 text-left">Categoria</th>
                     <th className="px-4 py-3 text-left">Setor</th>
                     <th className="px-4 py-3 text-left">Estado</th>
-                    <th className="px-4 py-3 text-right">Valor</th>
+                    {isAdmin && <th className="px-4 py-3 text-right">Valor</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {ultimos.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhum item cadastrado ainda.</td></tr>
+                    <tr><td colSpan={isAdmin ? 6 : 5} className="px-4 py-8 text-center text-muted-foreground">Nenhum item cadastrado ainda.</td></tr>
                   )}
                   {ultimos.map((i) => (
                     <tr key={i.id} className="border-t border-border hover:bg-muted/20">
@@ -155,7 +157,7 @@ function Dashboard() {
                       <td className="px-4 py-3 text-muted-foreground">{i.categoria}</td>
                       <td className="px-4 py-3 text-muted-foreground">{i.setor?.nome ?? "—"}</td>
                       <td className="px-4 py-3"><span className={`inline-block w-2 h-2 rounded-full mr-2 ${estadoColor[i.estado_conservacao as keyof typeof estadoColor] ?? "bg-muted"}`}></span>{i.estado_conservacao}</td>
-                      <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>
+                      {isAdmin && <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>}
                     </tr>
                   ))}
                 </tbody>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CATEGORIAS, ESTADOS, formatBRL } from "@/lib/categorias";
 import { exportCSV, gerarRelatorioTabela } from "@/lib/relatorios";
 import { FileDown, FileText } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/relatorios")({ component: Relatorios });
 
@@ -22,6 +23,7 @@ const formatarData = (value: string | null | undefined) => {
 };
 
 function Relatorios() {
+  const { isAdmin } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
   const [resps, setResps] = useState<any[]>([]);
@@ -149,7 +151,7 @@ function Relatorios() {
     { key: "estado_conservacao", label: "Conservação" },
     { key: "status", label: "Status" },
     { key: "baixa", label: "Motivo/data da baixa" },
-    { key: "valor_atual", label: "Valor", fmt: formatBRL },
+    ...(isAdmin ? [{ key: "valor_atual", label: "Valor", fmt: formatBRL }] : []),
   ];
 
   const exportarCSV = () => {
@@ -157,7 +159,8 @@ function Relatorios() {
       const rows = (tipo === "adicoes" ? adicoes : exclusoes).map((h) => ({
         data: new Date(h.created_at).toLocaleString("pt-BR"),
         codigo: h.codigo, nome: h.nome, categoria: h.categoria,
-        valor: h.valor, acao: h.acao, descricao: h.descricao,
+        ...(isAdmin ? { valor: h.valor } : {}),
+        acao: h.acao, descricao: h.descricao,
       }));
       exportCSV(rows, `relatorio-${tipo}-${Date.now()}.csv`);
       return;
@@ -169,7 +172,9 @@ function Relatorios() {
         origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—", observacoes: row.observacoes ?? "—",
       }) : tipo === "manutencoes" ? ({
         inicio: row.data_inicio, conclusao: row.data_conclusao ?? "—", patrimonio: `${row.patrimonios?.codigo ?? "—"} - ${row.patrimonios?.nome ?? "—"}`,
-        tipo: row.tipo, tecnico: row.tecnico ?? "—", fornecedor: row.fornecedor ?? "—", custo: row.custo, status: row.status,
+        tipo: row.tipo, tecnico: row.tecnico ?? "—", fornecedor: row.fornecedor ?? "—",
+        ...(isAdmin ? { custo: row.custo } : {}),
+        status: row.status,
       }) : tipo === "inventarios" ? ({
         data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: `${row.patrimonios?.codigo ?? "—"} - ${row.patrimonios?.nome ?? "—"}`,
         status: row.status_verificacao, observacao: row.observacao ?? "—", sessao: row.sessao_id ?? "—",
@@ -186,7 +191,7 @@ function Relatorios() {
       subcategoria: i.subcategoria, setor: i.setor?.nome ?? "—",
       responsavel: i.responsavel?.nome ?? "—", estado_conservacao: i.estado_conservacao ?? "—",
       status: i.status, baixa_data: i.baixa_data, baixa_motivo: i.baixa_motivo,
-      valor_aquisicao: i.valor_aquisicao, valor_atual: i.valor_atual,
+      ...(isAdmin ? { valor_aquisicao: i.valor_aquisicao, valor_atual: i.valor_atual } : {}),
       data_aquisicao: i.data_aquisicao, localizacao: i.localizacao,
     }));
     exportCSV(rows, `relatorio-patrimonio-${Date.now()}.csv`);
@@ -198,17 +203,17 @@ function Relatorios() {
     } else if (tipo === "setor") {
       gerarRelatorioTabela("Relatório por Setor", aggSetor, [
         { key: "label", label: "Setor" }, { key: "qtd", label: "Quantidade" },
-        { key: "valor", label: "Valor Total", fmt: formatBRL },
+        ...(isAdmin ? [{ key: "valor", label: "Valor Total", fmt: formatBRL }] : []),
       ]);
     } else if (tipo === "responsavel") {
       gerarRelatorioTabela("Relatório por Responsável", aggResp, [
         { key: "label", label: "Responsável" }, { key: "qtd", label: "Quantidade" },
-        { key: "valor", label: "Valor Total", fmt: formatBRL },
+        ...(isAdmin ? [{ key: "valor", label: "Valor Total", fmt: formatBRL }] : []),
       ]);
     } else if (tipo === "categoria") {
       gerarRelatorioTabela("Relatório por Categoria", aggCat, [
         { key: "label", label: "Categoria" }, { key: "qtd", label: "Quantidade" },
-        { key: "valor", label: "Valor Total", fmt: formatBRL },
+        ...(isAdmin ? [{ key: "valor", label: "Valor Total", fmt: formatBRL }] : []),
       ]);
     } else if (tipo === "adicoes" || tipo === "exclusoes") {
       const data = tipo === "adicoes" ? adicoes : exclusoes;
@@ -218,17 +223,17 @@ function Relatorios() {
         codigo: h.codigo ?? "—",
         nome: h.nome ?? "—",
         categoria: h.categoria ?? "—",
-        valor_atual: h.valor,
+        ...(isAdmin ? { valor_atual: h.valor } : {}),
       })), [
         { key: "data", label: "Data" },
         { key: "codigo", label: "Código" },
         { key: "nome", label: "Nome" },
         { key: "categoria", label: "Categoria" },
-        { key: "valor_atual", label: "Valor", fmt: formatBRL },
+        ...(isAdmin ? [{ key: "valor_atual", label: "Valor", fmt: formatBRL }] : []),
       ]);
     } else {
       const data = tipo === "movimentacoes" ? movimentacoesFiltradas : tipo === "manutencoes" ? manutencoesFiltradas : tipo === "inventarios" ? inventariosFiltrados : tipo === "garantias" ? garantias : historicoCompleto;
-      const rows = data.map((row) => tipo === "movimentacoes" ? ({ data: new Date(row.data_movimentacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—" }) : tipo === "manutencoes" ? ({ inicio: row.data_inicio, patrimonio: row.patrimonios?.codigo ?? "—", tipo: row.tipo, tecnico: row.tecnico ?? "—", custo: row.custo, status: row.status }) : tipo === "inventarios" ? ({ data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", status: row.status_verificacao, observacao: row.observacao ?? "—" }) : tipo === "garantias" ? ({ codigo: row.codigo, nome: row.nome, fornecedor: row.fornecedor ?? "—", validade: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero: row.numero_garantia ?? "—" }) : ({ data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: row.patrimonios?.codigo ?? row.codigo ?? "—", descricao: row.descricao ?? "—" }));
+      const rows = data.map((row) => tipo === "movimentacoes" ? ({ data: new Date(row.data_movimentacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", origem: row.origem?.nome ?? "—", destino: row.destino?.nome ?? "—", motivo: row.motivo ?? "—" }) : tipo === "manutencoes" ? ({ inicio: row.data_inicio, patrimonio: row.patrimonios?.codigo ?? "—", tipo: row.tipo, tecnico: row.tecnico ?? "—", ...(isAdmin ? { custo: row.custo } : {}), status: row.status }) : tipo === "inventarios" ? ({ data: new Date(row.data_verificacao).toLocaleString("pt-BR"), patrimonio: row.patrimonios?.codigo ?? "—", status: row.status_verificacao, observacao: row.observacao ?? "—" }) : tipo === "garantias" ? ({ codigo: row.codigo, nome: row.nome, fornecedor: row.fornecedor ?? "—", validade: row.garantia_ate ?? row.data_fim_garantia ?? "—", numero: row.numero_garantia ?? "—" }) : ({ data: new Date(row.created_at).toLocaleString("pt-BR"), acao: row.acao, patrimonio: row.patrimonios?.codigo ?? row.codigo ?? "—", descricao: row.descricao ?? "—" }));
       const cols = Object.keys(rows[0] ?? {}).map((key) => ({ key, label: key.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase()), fmt: key === "custo" ? formatBRL : undefined }));
       gerarRelatorioTabela(`Relatório de ${tipo}`, rows, cols);
     }
@@ -294,8 +299,8 @@ function Relatorios() {
             </SelectContent></Select></div>
           <div><Label className="text-xs">Data início</Label><Input type="date" value={dInicio} onChange={(e) => setDInicio(e.target.value)} /></div>
           <div><Label className="text-xs">Data fim</Label><Input type="date" value={dFim} onChange={(e) => setDFim(e.target.value)} /></div>
-          <div><Label className="text-xs">Valor mínimo</Label><Input type="number" value={vMin} onChange={(e) => setVMin(e.target.value)} /></div>
-          <div><Label className="text-xs">Valor máximo</Label><Input type="number" value={vMax} onChange={(e) => setVMax(e.target.value)} /></div>
+          {isAdmin && <div><Label className="text-xs">Valor mínimo</Label><Input type="number" value={vMin} onChange={(e) => setVMin(e.target.value)} /></div>}
+          {isAdmin && <div><Label className="text-xs">Valor máximo</Label><Input type="number" value={vMax} onChange={(e) => setVMax(e.target.value)} /></div>}
         </div>
 
         <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-border">
@@ -311,11 +316,11 @@ function Relatorios() {
             {tipo === "adicoes" ? `${adicoes.length} adições`
               : tipo === "exclusoes" ? `${exclusoes.length} exclusões`
               : tipo === "movimentacoes" ? `${movimentacoesFiltradas.length} movimentações`
-              : tipo === "manutencoes" ? `${manutencoesFiltradas.length} manutenções · ${formatBRL(manutencoesFiltradas.reduce((sum, row) => sum + Number(row.custo ?? 0), 0))}`
+              : tipo === "manutencoes" ? `${manutencoesFiltradas.length} manutenções${isAdmin ? ` · ${formatBRL(manutencoesFiltradas.reduce((sum, row) => sum + Number(row.custo ?? 0), 0))}` : ""}`
               : tipo === "inventarios" ? `${inventariosFiltrados.length} verificações`
               : tipo === "garantias" ? `${garantias.length} garantias`
               : tipo === "historico" ? `${historicoCompleto.length} eventos`
-              : `${filtered.length} itens · ${formatBRL(valorTotal)}`}
+              : `${filtered.length} itens${isAdmin ? ` · ${formatBRL(valorTotal)}` : ""}`}
           </div>
         </div>
         <div className="overflow-x-auto max-h-[500px]">
@@ -351,7 +356,7 @@ function Relatorios() {
                         : i.status}
                     </td>
                     <td className="whitespace-normal break-words px-3 py-2 text-muted-foreground">{i.baixa}</td>
-                    <td className="whitespace-nowrap px-3 py-2 text-right">{formatBRL(i.valor_atual)}</td>
+                    {isAdmin && <td className="whitespace-nowrap px-3 py-2 text-right">{formatBRL(i.valor_atual)}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -360,14 +365,14 @@ function Relatorios() {
           {(tipo === "setor" || tipo === "responsavel" || tipo === "categoria") && (
             <table className="w-full text-sm">
               <thead className="bg-muted/30 text-xs uppercase text-muted-foreground sticky top-0">
-                <tr><th className="px-4 py-3 text-left">{tipo === "setor" ? "Setor" : tipo === "responsavel" ? "Responsável" : "Categoria"}</th><th className="px-4 py-3 text-right">Qtd</th><th className="px-4 py-3 text-right">Valor Total</th></tr>
+                <tr><th className="px-4 py-3 text-left">{tipo === "setor" ? "Setor" : tipo === "responsavel" ? "Responsável" : "Categoria"}</th><th className="px-4 py-3 text-right">Qtd</th>{isAdmin && <th className="px-4 py-3 text-right">Valor Total</th>}</tr>
               </thead>
               <tbody>
                 {(tipo === "setor" ? aggSetor : tipo === "responsavel" ? aggResp : aggCat).map((g, idx) => (
                   <tr key={idx} className="border-t border-border">
                     <td className="px-4 py-2 font-medium">{g.label}</td>
                     <td className="px-4 py-2 text-right">{g.qtd}</td>
-                    <td className="px-4 py-2 text-right text-primary font-medium">{formatBRL(g.valor)}</td>
+                    {isAdmin && <td className="px-4 py-2 text-right text-primary font-medium">{formatBRL(g.valor)}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -381,7 +386,7 @@ function Relatorios() {
                   <th className="px-4 py-3 text-left">Código</th>
                   <th className="px-4 py-3 text-left">Nome</th>
                   <th className="px-4 py-3 text-left">Categoria</th>
-                  <th className="px-4 py-3 text-right">Valor</th>
+                  {isAdmin && <th className="px-4 py-3 text-right">Valor</th>}
                 </tr>
               </thead>
               <tbody>
@@ -391,17 +396,17 @@ function Relatorios() {
                     <td className="px-4 py-2 font-mono text-primary">{h.codigo ?? "—"}</td>
                     <td className="px-4 py-2">{h.nome ?? "—"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{h.categoria ?? "—"}</td>
-                    <td className="px-4 py-2 text-right">{formatBRL(h.valor)}</td>
+                    {isAdmin && <td className="px-4 py-2 text-right">{formatBRL(h.valor)}</td>}
                   </tr>
                 ))}
                 {(tipo === "adicoes" ? adicoes : exclusoes).length === 0 && (
-                  <tr><td colSpan={5} className="text-center text-muted-foreground py-8">Nenhum registro no período</td></tr>
+                  <tr><td colSpan={isAdmin ? 5 : 4} className="text-center text-muted-foreground py-8">Nenhum registro no período</td></tr>
                 )}
               </tbody>
             </table>
           )}
           {tipo === "movimentacoes" && <ReportTable rows={movimentacoesFiltradas.map((m) => ({ data: new Date(m.data_movimentacao).toLocaleString("pt-BR"), patrimonio: m.patrimonios?.codigo ?? "—", origem: m.origem?.nome ?? "—", destino: m.destino?.nome ?? "—", motivo: m.motivo ?? "—" }))} />}
-          {tipo === "manutencoes" && <ReportTable rows={manutencoesFiltradas.map((m) => ({ inicio: m.data_inicio, patrimonio: m.patrimonios?.codigo ?? "—", tipo: m.tipo, tecnico: m.tecnico ?? "—", custo: formatBRL(m.custo), status: m.status }))} />}
+          {tipo === "manutencoes" && <ReportTable rows={manutencoesFiltradas.map((m) => ({ inicio: m.data_inicio, patrimonio: m.patrimonios?.codigo ?? "—", tipo: m.tipo, tecnico: m.tecnico ?? "—", ...(isAdmin ? { custo: formatBRL(m.custo) } : {}), status: m.status }))} />}
           {tipo === "inventarios" && <ReportTable rows={inventariosFiltrados.map((i) => ({ data: new Date(i.data_verificacao).toLocaleString("pt-BR"), patrimonio: i.patrimonios?.codigo ?? "—", status: i.status_verificacao, observacao: i.observacao ?? "—" }))} />}
           {tipo === "garantias" && <ReportTable rows={garantias.map((i) => ({ codigo: i.codigo, nome: i.nome, fornecedor: i.fornecedor ?? "—", validade: i.garantia_ate ?? i.data_fim_garantia ?? "—", numero: i.numero_garantia ?? "—" }))} />}
           {tipo === "historico" && <ReportTable rows={historicoCompleto.map((h) => ({ data: new Date(h.created_at).toLocaleString("pt-BR"), acao: h.acao, patrimonio: h.patrimonios?.codigo ?? h.codigo ?? "—", descricao: h.descricao ?? "—" }))} />}

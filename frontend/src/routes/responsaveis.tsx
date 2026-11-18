@@ -13,10 +13,12 @@ import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatBRL } from "@/lib/categorias";
 import { ReportActions } from "@/components/ReportActions";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/responsaveis")({ component: Page });
 
 function Page() {
+  const { isAdmin } = useAuth();
   const [list, setList] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
   const [itensPorResp, setItensPorResp] = useState<Record<string, any[]>>({});
@@ -118,7 +120,7 @@ function Page() {
                           <tr key={i.id} className="border-b border-border last:border-0">
                             <td className="py-2 font-mono text-primary w-24">{i.codigo}</td>
                             <td className="py-2">{i.nome}</td>
-                            <td className="py-2 text-right">{formatBRL(i.valor_atual)}</td>
+                            {isAdmin && <td className="py-2 text-right">{formatBRL(i.valor_atual)}</td>}
                           </tr>
                         ))}
                       </tbody>

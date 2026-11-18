@@ -31,13 +31,16 @@ router.post('/users', async (req, res) => {
     return res.status(400).json({ message: 'E-mail deve pertencer a um domínio corporativo permitido' });
   }
   if (!nome || !email || !password || String(password).length < 6) return res.status(400).json({ message: 'Dados inválidos' });
+  if (role !== undefined && !['admin', 'gestor', 'user'].includes(role)) {
+    return res.status(400).json({ message: 'Perfil de usuário inválido' });
+  }
   try {
     const normalizedEmail = email.trim().toLowerCase();
     const exists = await pool.query('SELECT 1 FROM users WHERE LOWER(BTRIM(email)) = $1', [normalizedEmail]);
     if (exists.rows.length > 0) return res.status(400).json({ message: 'Este e-mail já está cadastrado' });
     const result = await pool.query(
       `INSERT INTO users (nome, email, password_hash, role, cargo, setor) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${USER_COLS}`,
-      [nome, normalizedEmail, await bcrypt.hash(password, 10), role === 'admin' ? 'admin' : 'user', cargo || null, setor || null]
+      [nome, normalizedEmail, await bcrypt.hash(password, 10), role ?? 'user', cargo || null, setor || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -48,6 +51,9 @@ router.post('/users', async (req, res) => {
 
 router.put('/users/:id', async (req: any, res) => {
   const { nome, email, cargo, setor, role, status } = req.body;
+  if (role !== undefined && !['admin', 'gestor', 'user'].includes(role)) {
+    return res.status(400).json({ message: 'Perfil de usuário inválido' });
+  }
   let normalizedEmail: string | null = null;
   if (email !== undefined) {
     if (typeof email !== 'string' || !isCorporateEmail(email)) {
@@ -55,7 +61,7 @@ router.put('/users/:id', async (req: any, res) => {
     }
     normalizedEmail = email.trim().toLowerCase();
   }
-  if (req.params.id === req.auth.id && (role === 'user' || status === 'inactive')) {
+  if (req.params.id === req.auth.id && ((role !== undefined && role !== 'admin') || status === 'inactive')) {
     return res.status(400).json({ message: 'Não é possível remover o seu próprio acesso de administrador' });
   }
   try {

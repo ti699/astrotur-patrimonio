@@ -8,7 +8,7 @@ export type Profile = {
   email: string;
   cargo?: string | null;
   setor?: string | null;
-  role: "admin" | "user";
+  role: "admin" | "gestor" | "user" | "usuario";
   status?: string;
   avatar_url?: string | null;
   created_at?: string;
@@ -20,6 +20,7 @@ type Ctx = {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
+  isManager: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -30,6 +31,7 @@ const AuthContext = createContext<Ctx>({
   profile: null,
   loading: true,
   isAdmin: false,
+  isManager: false,
   refreshProfile: async () => {},
   signOut: async () => {},
 });
@@ -110,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         isAdmin: profile?.role === "admin",
+        isManager: profile?.role === "gestor",
         refreshProfile,
         signOut,
       }}

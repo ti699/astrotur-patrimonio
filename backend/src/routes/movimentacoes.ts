@@ -1,14 +1,22 @@
 import { Router } from 'express';
+import type { PoolClient } from 'pg';
 import { pool } from '../db';
+import {
+  getPatrimonioAccess,
+  patrimonioScope,
+  protectFinancialResponse,
+} from '../utils/patrimonioAccess';
 
 const router = Router();
 
 const emptyToNull = (v: unknown) => (v === '' || v === undefined ? null : v);
 
 // GET /api/movimentacoes - Histórico com nomes resolvidos
-router.get('/', async (req, res) => {
+router.get('/', async (req: any, res) => {
   const patrimonioId = (req.query.patrimonio_id as string) || null;
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    const scope = patrimonioScope(access, 'p', 2);
     const result = await pool.query(
       `SELECT m.*,
         json_build_object('codigo', p.codigo, 'nome', p.nome) AS patrimonios,
@@ -22,11 +30,11 @@ router.get('/', async (req, res) => {
        LEFT JOIN setores sd ON sd.id = m.setor_destino_id
        LEFT JOIN responsaveis ro ON ro.id = m.responsavel_origem_id
        LEFT JOIN responsaveis rd ON rd.id = m.responsavel_destino_id
-       WHERE ($1::uuid IS NULL OR m.patrimonio_id = $1::uuid)
+       WHERE ($1::uuid IS NULL OR m.patrimonio_id = $1::uuid) AND ${scope.clause}
        ORDER BY m.data_movimentacao DESC`,
-      [patrimonioId]
+      [patrimonioId, ...scope.values]
     );
-    res.json(result.rows);
+    res.json(protectFinancialResponse(result.rows, access));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erro ao buscar movimentações' });
@@ -38,10 +46,17 @@ router.post('/', async (req: any, res) => {
   const { patrimonio_id, setor_destino_id, responsavel_destino_id, localizacao_destino, motivo, observacoes } = req.body;
   if (!patrimonio_id) return res.status(400).json({ message: 'Património é obrigatório' });
 
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    const access = await getPatrimonioAccess(req.auth);
+    client = await pool.connect();
     await client.query('BEGIN');
-    const pat = await client.query('SELECT setor_id, responsavel_id, localizacao FROM patrimonios WHERE id = $1 FOR UPDATE', [patrimonio_id]);
+    const scope = patrimonioScope(access, 'p', 2);
+    const pat = await client.query(
+      `SELECT p.setor_id, p.responsavel_id, p.localizacao FROM patrimonios p
+       WHERE p.id = $1 AND ${scope.clause} FOR UPDATE`,
+      [patrimonio_id, ...scope.values]
+    );
     if (pat.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Património não encontrado' });
@@ -63,13 +78,13 @@ router.post('/', async (req: any, res) => {
       [setorDestino ?? p.setor_id, respDestino ?? p.responsavel_id, locDestino ?? p.localizacao, patrimonio_id]
     );
     await client.query('COMMIT');
-    res.status(201).json(inserted.rows[0]);
+    res.status(201).json(protectFinancialResponse(inserted.rows[0], access));
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error(error);
     res.status(500).json({ message: 'Erro ao registar movimentação' });
   } finally {
-    client.release();
+    client?.release();
   }
 });
 

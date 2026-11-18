@@ -134,7 +134,7 @@ function TabEmpresa() {
 /* ============================ USUÁRIOS ============================ */
 type ProfileRow = {
   id: string; user_id: string; nome: string; email: string; cargo: string | null;
-  setor: string | null; role: "admin" | "user"; status: string;
+  setor: string | null; role: "admin" | "gestor" | "user"; status: string;
 };
 
 function TabUsuarios() {
@@ -201,7 +201,7 @@ function TabUsuarios() {
                   <TableCell>{u.setor ?? "—"}</TableCell>
                   <TableCell>
                     <Badge variant={u.role === "admin" ? "default" : "outline"} className={u.role === "admin" ? "bg-primary" : ""}>
-                      {u.role === "admin" ? "Admin" : "Usuário"}
+                      {u.role === "admin" ? "Admin" : u.role === "gestor" ? "Gestor" : "Usuário"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -246,7 +246,7 @@ function UserEditDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
   const [email, setEmail] = useState(user.email);
   const [cargo, setCargo] = useState(user.cargo ?? "");
   const [setor, setSetor] = useState(user.setor ?? "");
-  const [role, setRole] = useState<"admin" | "user">(user.role);
+  const [role, setRole] = useState<"admin" | "gestor" | "user">(user.role);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -276,10 +276,11 @@ function UserEditDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
           </div>
           <div>
             <Label>Tipo</Label>
-            <Select value={role} onValueChange={(v: "admin" | "user") => setRole(v)}>
+            <Select value={role} onValueChange={(v: "admin" | "gestor" | "user") => setRole(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">Usuário comum</SelectItem>
+                <SelectItem value="gestor">Gestor</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>
             </Select>
@@ -297,7 +298,7 @@ function UserEditDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
 }
 
 function NewUserDialog({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState({ nome: "", email: "", password: "", cargo: "", setor: "", role: "user" as "admin" | "user" });
+  const [form, setForm] = useState({ nome: "", email: "", password: "", cargo: "", setor: "", role: "user" as "admin" | "gestor" | "user" });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -328,10 +329,11 @@ function NewUserDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <Label>Tipo</Label>
-            <Select value={form.role} onValueChange={(v: "admin" | "user") => set("role")(v)}>
+            <Select value={form.role} onValueChange={(v: "admin" | "gestor" | "user") => set("role")(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">Usuário comum</SelectItem>
+                <SelectItem value="gestor">Gestor</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>
             </Select>

@@ -114,7 +114,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="p-4 border-t border-sidebar-border">
           <div className="text-xs font-medium text-sidebar-foreground truncate">{profile?.nome || user?.email}</div>
           <div className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider">
-            {isAdmin ? "Administrador" : "Usuário"}
+            {isAdmin ? "Administrador" : profile?.role === "gestor" ? "Gestor" : "Usuário"}
           </div>
           <button onClick={handleLogout} disabled={loggingOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent disabled:opacity-60">

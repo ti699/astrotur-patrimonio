@@ -13,10 +13,12 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { formatBRL } from "@/lib/categorias";
 import { toast } from "sonner";
 import { ReportActions } from "@/components/ReportActions";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/setores")({ component: Setores });
 
 function Setores() {
+  const { isAdmin } = useAuth();
   const [list, setList] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<string, { qtd: number; valor: number }>>({});
   const [open, setOpen] = useState(false);
@@ -74,7 +76,7 @@ function Setores() {
           <p className="text-sm text-muted-foreground">Departamentos cadastrados na empresa</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ReportActions title="Relatório completo de Setores" filename="relatorio-setores" rows={list.map((s) => ({ nome: s.nome, descricao: s.descricao ?? "—", itens: counts[s.id]?.qtd ?? 0, valor: counts[s.id]?.valor ?? 0 }))} columns={[{ key: "nome", label: "Setor" }, { key: "descricao", label: "Descrição" }, { key: "itens", label: "Itens" }, { key: "valor", label: "Valor", fmt: formatBRL }]} />
+          <ReportActions title="Relatório completo de Setores" filename="relatorio-setores" rows={list.map((s) => ({ nome: s.nome, descricao: s.descricao ?? "—", itens: counts[s.id]?.qtd ?? 0, ...(isAdmin ? { valor: counts[s.id]?.valor ?? 0 } : {}) }))} columns={[{ key: "nome", label: "Setor" }, { key: "descricao", label: "Descrição" }, { key: "itens", label: "Itens" }, ...(isAdmin ? [{ key: "valor", label: "Valor", fmt: formatBRL }] : [])]} />
           <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Setor</Button>
         </div>
       </div>
@@ -102,7 +104,7 @@ function Setores() {
               {s.descricao && <p className="text-xs text-muted-foreground mb-3">{s.descricao}</p>}
               <div className="flex justify-between text-sm pt-3 border-t border-border">
                 <div><div className="text-xs text-muted-foreground">Itens</div><div className="font-bold">{c.qtd}</div></div>
-                <div className="text-right"><div className="text-xs text-muted-foreground">Valor</div><div className="font-bold text-primary">{formatBRL(c.valor)}</div></div>
+                {isAdmin && <div className="text-right"><div className="text-xs text-muted-foreground">Valor</div><div className="font-bold text-primary">{formatBRL(c.valor)}</div></div>}
               </div>
             </Card>
           );

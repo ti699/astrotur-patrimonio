@@ -110,7 +110,8 @@ const apiErrorMessage = (error: unknown, fallback: string) =>
 
 function List() {
   const router = useRouter();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isManager } = useAuth();
+  const canDelete = isAdmin || isManager;
   const [items, setItems] = useState<Patrimonio[]>([]);
   const [setores, setSetores] = useState<SelectOption[]>([]);
   const [responsaveis, setResponsaveis] = useState<SelectOption[]>([]);
@@ -289,8 +290,10 @@ function List() {
               setor: i.setor?.nome ?? "—",
               responsavel: i.responsavel?.nome ?? "—",
               estado: i.estado_conservacao,
-              valor_aquisicao: i.valor_aquisicao,
-              valor_atual: i.valor_atual,
+              ...(isAdmin ? {
+                valor_aquisicao: i.valor_aquisicao,
+                valor_atual: i.valor_atual,
+              } : {}),
               data_aquisicao: i.data_aquisicao ?? "—",
               localizacao: i.localizacao ?? "—",
             }))}
@@ -301,8 +304,10 @@ function List() {
               { key: "setor", label: "Setor" },
               { key: "responsavel", label: "Responsável" },
               { key: "estado", label: "Estado" },
-              { key: "valor_aquisicao", label: "Valor aquisição", fmt: formatBRL },
-              { key: "valor_atual", label: "Valor atual", fmt: formatBRL },
+              ...(isAdmin ? [
+                { key: "valor_aquisicao", label: "Valor aquisição", fmt: formatBRL },
+                { key: "valor_atual", label: "Valor atual", fmt: formatBRL },
+              ] : []),
               { key: "data_aquisicao", label: "Aquisição" },
               { key: "localizacao", label: "Localização" },
             ]}
@@ -379,18 +384,22 @@ function List() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="number"
-            placeholder="Valor mínimo (R$)"
-            value={fMin}
-            onChange={(e) => setFMin(e.target.value)}
-          />
-          <Input
-            type="number"
-            placeholder="Valor máximo (R$)"
-            value={fMax}
-            onChange={(e) => setFMax(e.target.value)}
-          />
+          {isAdmin && (
+            <>
+              <Input
+                type="number"
+                placeholder="Valor mínimo (R$)"
+                value={fMin}
+                onChange={(e) => setFMin(e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="Valor máximo (R$)"
+                value={fMax}
+                onChange={(e) => setFMax(e.target.value)}
+              />
+            </>
+          )}
           <Select value={fGar} onValueChange={setFGar}>
             <SelectTrigger>
               <SelectValue placeholder="Garantia" />
@@ -417,21 +426,21 @@ function List() {
                 <th className="px-4 py-3 text-left">Responsável</th>
                 <th className="px-4 py-3 text-left">Estado</th>
                 <th className="px-4 py-3 text-left">Garantia</th>
-                <th className="px-4 py-3 text-right">Valor</th>
+                {isAdmin && <th className="px-4 py-3 text-right">Valor</th>}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-8 text-center text-muted-foreground">
                     Carregando...
                   </td>
                 </tr>
               )}
               {!loading && pageItems.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-8 text-center text-muted-foreground">
                     Nenhum item encontrado.
                   </td>
                 </tr>
@@ -489,7 +498,7 @@ function List() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>
+                    {isAdmin && <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>}
                     <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <Button
@@ -525,7 +534,7 @@ function List() {
                             onConfirm={(reason) => discard(i, reason)}
                           />
                         )}
-                        {isAdmin && (
+                        {canDelete && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <button className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive">
