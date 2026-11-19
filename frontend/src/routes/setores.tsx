@@ -77,7 +77,7 @@ function Setores() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ReportActions title="Relatório completo de Setores" filename="relatorio-setores" rows={list.map((s) => ({ nome: s.nome, descricao: s.descricao ?? "—", itens: counts[s.id]?.qtd ?? 0, ...(isAdmin ? { valor: counts[s.id]?.valor ?? 0 } : {}) }))} columns={[{ key: "nome", label: "Setor" }, { key: "descricao", label: "Descrição" }, { key: "itens", label: "Itens" }, ...(isAdmin ? [{ key: "valor", label: "Valor", fmt: formatBRL }] : [])]} />
-          <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Setor</Button>
+          {isAdmin && <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Setor</Button>}
         </div>
       </div>
 
@@ -88,7 +88,7 @@ function Setores() {
             <Card key={s.id} className="p-5 bg-card border-border">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-semibold text-lg">{s.nome}</h3>
-                <div className="flex gap-1">
+                {isAdmin && <div className="flex gap-1">
                   <button onClick={() => openEdit(s)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-primary"><Pencil className="h-4 w-4" /></button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -99,7 +99,7 @@ function Setores() {
                       <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => remove(s.id)} className="bg-destructive">Excluir</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </div>
+                </div>}
               </div>
               {s.descricao && <p className="text-xs text-muted-foreground mb-3">{s.descricao}</p>}
               <div className="flex justify-between text-sm pt-3 border-t border-border">
@@ -111,7 +111,7 @@ function Setores() {
         })}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {isAdmin && <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? "Editar Setor" : "Novo Setor"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -120,7 +120,7 @@ function Setores() {
             <Button onClick={save} className="w-full bg-primary hover:bg-primary/90">Salvar</Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </AppLayout>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { exportCSV, exportPDF } from "@/lib/relatorios";
 import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/inventario")({ component: InventarioPage });
 
@@ -32,6 +33,7 @@ const statusMeta: Record<StatusT, { color: string; icon: any }> = {
 };
 
 function InventarioPage() {
+  const { isAdmin } = useAuth();
   const [patrimonios, setPatrimonios] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
   const [responsaveis, setResponsaveis] = useState<any[]>([]);
@@ -240,13 +242,13 @@ function InventarioPage() {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={exportarPDF}><FileDown className="h-4 w-4 mr-2" />PDF</Button>
           <Button variant="outline" onClick={exportarCSV}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel/CSV</Button>
-          {sessaoId ? (
+          {isAdmin && (sessaoId ? (
             <Button variant="destructive" onClick={encerrarInventario}>Encerrar Inventário</Button>
           ) : (
             <Button className="bg-primary hover:bg-primary/90" onClick={iniciarInventario}>
               <Play className="h-4 w-4 mr-2" />Iniciar Inventário
             </Button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -349,13 +351,15 @@ function InventarioPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant={v ? "outline" : "default"}
-                          className={v ? "" : "bg-primary hover:bg-primary/90"}
-                          disabled={!sessaoId}
-                          title={!sessaoId ? "Inicie um inventário para registrar uma verificação" : undefined}
-                          onClick={() => abrirVerificacao(p)}>
-                          {v ? "Editar" : "Verificar"}
-                        </Button>
+                        {isAdmin && (
+                          <Button size="sm" variant={v ? "outline" : "default"}
+                            className={v ? "" : "bg-primary hover:bg-primary/90"}
+                            disabled={!sessaoId}
+                            title={!sessaoId ? "Inicie um inventário para registrar uma verificação" : undefined}
+                            onClick={() => abrirVerificacao(p)}>
+                            {v ? "Editar" : "Verificar"}
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -366,7 +370,8 @@ function InventarioPage() {
         )}
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {isAdmin && (
+        <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle>Verificar patrimônio</DialogTitle>
@@ -399,7 +404,8 @@ function InventarioPage() {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      )}
       <RecordDetailsDialog
         open={Boolean(verificacaoSelecionada)}
         onOpenChange={(isOpen) => { if (!isOpen) setVerificacaoSelecionada(null); }}

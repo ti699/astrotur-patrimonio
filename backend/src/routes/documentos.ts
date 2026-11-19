@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { pool } from '../db';
+import { requireAdminForWrites } from '../middleware/requireAdminForWrites';
 import {
   getPatrimonioAccess,
   patrimonioIsAccessible,
@@ -11,6 +12,7 @@ import {
 } from '../utils/patrimonioAccess';
 
 const router = Router();
+router.use(requireAdminForWrites);
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || 'uploads');
 const MAX_BYTES = 25 * 1024 * 1024;
 const ALLOWED_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'docx', 'xlsx'];
@@ -23,7 +25,12 @@ router.get('/', async (req: any, res) => {
     if (!(await patrimonioIsAccessible(pool, patrimonioId, access))) {
       return res.status(404).json({ message: 'Patrimônio não encontrado' });
     }
-    const result = await pool.query('SELECT * FROM documentos WHERE patrimonio_id = $1 ORDER BY data_upload DESC', [patrimonioId]);
+    const result = await pool.query(
+      `SELECT * FROM documentos
+       WHERE patrimonio_id = $1 AND ($2::boolean OR LOWER(BTRIM(categoria)) <> 'nota fiscal')
+       ORDER BY data_upload DESC`,
+      [patrimonioId, access.isAdmin]
+    );
     res.json(protectFinancialResponse(result.rows, access));
   } catch (error) {
     console.error(error);
@@ -65,8 +72,9 @@ router.get('/:id/file', async (req: any, res) => {
     const result = await pool.query(
       `SELECT d.* FROM documentos d
        JOIN patrimonios p ON p.id = d.patrimonio_id
-       WHERE d.id = $1 AND ${scope.clause}`,
-      [req.params.id, ...scope.values]
+       WHERE d.id = $1 AND ${scope.clause}
+         AND ($${scope.values.length + 2}::boolean OR LOWER(BTRIM(d.categoria)) <> 'nota fiscal')`,
+      [req.params.id, ...scope.values, access.isAdmin]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Documento não encontrado' });
     const doc = result.rows[0];

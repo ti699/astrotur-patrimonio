@@ -3,8 +3,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
+import { requireAdminForWrites } from '../middleware/requireAdminForWrites';
 
 const router = Router();
+router.use(requireAdminForWrites);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 

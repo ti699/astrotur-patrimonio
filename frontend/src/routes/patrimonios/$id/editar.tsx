@@ -1,6 +1,6 @@
 import { createFileRoute, useParams, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { AppLayout, RequireAdmin } from "@/components/AppLayout";
 import { api } from "@/services/api";
 import { PatrimonioForm } from "@/components/PatrimonioForm";
 
@@ -20,17 +20,19 @@ function Editar() {
 
   return (
     <AppLayout>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Editar Patrimônio</h1>
-      </div>
-      {item ? (
-        <PatrimonioForm
-          initial={item}
-          onSaved={(savedId) => router.navigate({ to: "/patrimonios/$id", params: { id: savedId } })}
-        />
-      ) : (
-        <div className="text-muted-foreground">Carregando...</div>
-      )}
+      <RequireAdmin>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Editar Patrimônio</h1>
+        </div>
+        {item ? (
+          <PatrimonioForm
+            initial={item}
+            onSaved={(savedId) => router.navigate({ to: "/patrimonios/$id", params: { id: savedId } })}
+          />
+        ) : (
+          <div className="text-muted-foreground">Carregando...</div>
+        )}
+      </RequireAdmin>
     </AppLayout>
   );
 }

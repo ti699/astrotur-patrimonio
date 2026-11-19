@@ -93,7 +93,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
                 {item.children && active && (
                   <div className="ml-8 mt-1 space-y-1">
-                    {item.children.map((c) => {
+                    {item.children.filter((c) => isAdmin || c.to !== "/patrimonios/novo").map((c) => {
                       const CI = c.icon;
                       return (
                         <Link key={c.to} to={c.to}

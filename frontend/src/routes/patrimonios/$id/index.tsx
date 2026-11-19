@@ -100,12 +100,16 @@ function Detail() {
           <Button variant="outline" onClick={() => gerarRelatorioItem(item, isAdmin)}>
             <FileDown className="h-4 w-4 mr-2" /> Gerar relatório
           </Button>
-          <Button variant="outline" onClick={() => setTermoOpen(true)}>
-            <FileDown className="h-4 w-4 mr-2" /> Gerar Termo de Responsabilidade
-          </Button>
-          <Link to="/patrimonios/$id/editar" params={{ id: item.id }}>
-            <Button className="bg-primary hover:bg-primary/90"><Pencil className="h-4 w-4 mr-2" /> Editar</Button>
-          </Link>
+          {isAdmin && (
+            <>
+              <Button variant="outline" onClick={() => setTermoOpen(true)}>
+                <FileDown className="h-4 w-4 mr-2" /> Gerar Termo de Responsabilidade
+              </Button>
+              <Link to="/patrimonios/$id/editar" params={{ id: item.id }}>
+                <Button className="bg-primary hover:bg-primary/90"><Pencil className="h-4 w-4 mr-2" /> Editar</Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -272,12 +276,14 @@ function Detail() {
           )}
         </Card>
       </div>
-      <TermoResponsabilidadeDialog
-        item={item}
-        open={termoOpen}
-        onOpenChange={setTermoOpen}
-        onEmitted={(event) => setHistorico((current) => [event, ...current])}
-      />
+      {isAdmin && (
+        <TermoResponsabilidadeDialog
+          item={item}
+          open={termoOpen}
+          onOpenChange={setTermoOpen}
+          onEmitted={(event) => setHistorico((current) => [event, ...current])}
+        />
+      )}
     </AppLayout>
   );
 }

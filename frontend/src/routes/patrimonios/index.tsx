@@ -119,8 +119,8 @@ const apiErrorMessage = (error: unknown, fallback: string) =>
 
 function List() {
   const router = useRouter();
-  const { isAdmin, isManager } = useAuth();
-  const canDelete = isAdmin || isManager;
+  const { isAdmin } = useAuth();
+  const canDelete = isAdmin;
   const [items, setItems] = useState<Patrimonio[]>([]);
   const [setores, setSetores] = useState<SelectOption[]>([]);
   const [responsaveis, setResponsaveis] = useState<SelectOption[]>([]);
@@ -234,7 +234,7 @@ function List() {
             type,
             title: action || "Alteração registrada",
             description: entry.descricao,
-            responsible: entry.usuario_nome ?? entry.usuario?.nome ?? entry.responsavel_nome ?? null,
+            responsible: entry.responsavel_nome ?? entry.responsavel?.nome ?? null,
           };
         }),
         ...movements.map((movement) => ({
@@ -256,7 +256,7 @@ function List() {
           type: "manutencao" as const,
           title: `${entry.tipo ?? "Manutenção"}${entry.status ? ` — ${entry.status}` : ""}`,
           description: entry.descricao ?? entry.observacoes,
-          responsible: entry.usuario_nome ?? entry.responsavel_nome ?? entry.tecnico ?? null,
+          responsible: entry.responsavel_nome ?? entry.tecnico ?? null,
         })),
       ];
       setTimelineEvents(events);
@@ -323,12 +323,14 @@ function List() {
               { key: "localizacao", label: "Localização" },
             ]}
           />
-          <Button
-            onClick={() => router.navigate({ to: "/patrimonios/novo" })}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Novo Cadastro
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={() => router.navigate({ to: "/patrimonios/novo" })}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Novo Cadastro
+            </Button>
+          )}
         </div>
       </div>
 
@@ -452,7 +454,9 @@ function List() {
               {!loading && pageItems.length === 0 && (
                 <tr>
                   <td colSpan={isAdmin ? 9 : 8} className="px-4 py-8 text-center text-muted-foreground">
-                    Nenhum item encontrado.
+                    {items.length === 0
+                      ? "Nenhum patrimônio vinculado ao seu usuário no momento."
+                      : "Nenhum item encontrado."}
                   </td>
                 </tr>
               )}

@@ -14,10 +14,12 @@ import { toast } from "sonner";
 import { ArrowRightLeft, Plus, Loader2, Filter, X, Eye } from "lucide-react";
 import { ReportActions } from "@/components/ReportActions";
 import { RecordDetailsDialog } from "@/components/RecordDetailsDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/movimentacoes")({ component: MovPage });
 
 function MovPage() {
+  const { isAdmin } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [patrimonios, setPatrimonios] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
@@ -102,7 +104,8 @@ function MovPage() {
             { key: "responsavel_origem", label: "Responsável origem" }, { key: "responsavel_destino", label: "Responsável destino" }, { key: "localizacao_origem", label: "Localização origem" },
             { key: "localizacao_destino", label: "Localização destino" }, { key: "motivo", label: "Motivo" }, { key: "observacoes", label: "Observações" },
           ]} />
-          <Dialog open={open} onOpenChange={setOpen}>
+          {isAdmin && (
+            <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" />Nova movimentação</Button>
             </DialogTrigger>
@@ -137,7 +140,8 @@ function MovPage() {
               </Button>
             </div>
           </DialogContent>
-          </Dialog>
+            </Dialog>
+          )}
         </div>
       </div>
 

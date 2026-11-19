@@ -77,7 +77,8 @@ function Page() {
             ...(isAdmin ? [{ key: "custo", label: "Custo", fmt: formatBRL }] : []),
             { key: "status", label: "Status" }, { key: "observacoes", label: "Observações" },
           ]} />
-          <Dialog open={open} onOpenChange={setOpen}>
+          {isAdmin && (
+            <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" />Nova manutenção</Button></DialogTrigger>
           <DialogContent className="max-w-2xl bg-card border-border">
             <DialogHeader><DialogTitle>Registrar manutenção</DialogTitle></DialogHeader>
@@ -113,7 +114,8 @@ function Page() {
               </Button>
             </div>
           </DialogContent>
-          </Dialog>
+            </Dialog>
+          )}
         </div>
       </div>
 

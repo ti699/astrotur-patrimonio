@@ -63,7 +63,7 @@ function Page() {
           { label: "Data", value: selected.created_at ? new Date(selected.created_at).toLocaleString("pt-BR") : "—" },
           { label: "Ação", value: selected.acao },
           { label: "Descrição", value: selected.descricao },
-          { label: "Responsável", value: selected.usuario_nome ?? selected.responsavel_nome },
+          { label: "Responsável", value: selected.responsavel_nome ?? "Não informado" },
         ] : []}
       />
     </AppLayout>

@@ -77,7 +77,7 @@ function Page() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ReportActions title="Relatório completo de Responsáveis" filename="relatorio-responsaveis" rows={list.map((r) => ({ nome: r.nome, cargo: r.cargo ?? "—", setor: r.setor?.nome ?? "—", contato_email: r.contato_email ?? "—", contato_telefone: r.contato_telefone ?? "—", itens: (itensPorResp[r.id] ?? []).length }))} columns={[{ key: "nome", label: "Nome" }, { key: "cargo", label: "Cargo" }, { key: "setor", label: "Setor" }, { key: "contato_email", label: "E-mail" }, { key: "contato_telefone", label: "Telefone" }, { key: "itens", label: "Itens" }]} />
-          <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Responsável</Button>
+          {isAdmin && <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Responsável</Button>}
         </div>
       </div>
 
@@ -98,7 +98,7 @@ function Page() {
                 </div>
                 <div className="text-sm text-muted-foreground hidden md:block">{r.contato_email}</div>
                 <div className="text-sm">{items.length} <span className="text-xs text-muted-foreground">itens</span></div>
-                <div className="flex gap-1">
+                {isAdmin && <div className="flex gap-1">
                   <button onClick={() => openEdit(r)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-primary"><Pencil className="h-4 w-4" /></button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -109,7 +109,7 @@ function Page() {
                       <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => remove(r.id)} className="bg-destructive">Excluir</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </div>
+                </div>}
               </div>
               {exp && (
                 <div className="bg-muted/20 px-12 py-3">
@@ -133,7 +133,7 @@ function Page() {
         })}
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {isAdmin && <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? "Editar Responsável" : "Novo Responsável"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
@@ -151,7 +151,7 @@ function Page() {
             <Button onClick={save} className="w-full bg-primary hover:bg-primary/90">Salvar</Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </AppLayout>
   );
 }

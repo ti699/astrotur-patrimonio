@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import type { PoolClient } from 'pg';
 import { pool } from '../db';
+import { requireAdminForWrites } from '../middleware/requireAdminForWrites';
 import {
   getPatrimonioAccess,
-  hasFinancialFields,
   patrimonioScope,
   protectFinancialResponse,
 } from '../utils/patrimonioAccess';
 
 const router = Router();
+router.use(requireAdminForWrites);
 
 // GET /api/manutencoes?patrimonio_id=
 router.get('/', async (req: any, res) => {
@@ -39,9 +40,6 @@ router.post('/', async (req: any, res) => {
   let client: PoolClient | undefined;
   try {
     const access = await getPatrimonioAccess(req.auth);
-    if (!access.isAdmin && hasFinancialFields(b)) {
-      return res.status(403).json({ message: 'Apenas administradores podem informar custos' });
-    }
     client = await pool.connect();
     await client.query('BEGIN');
     const scope = patrimonioScope(access, 'p', 2);

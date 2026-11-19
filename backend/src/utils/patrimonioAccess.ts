@@ -12,7 +12,6 @@ type Queryable = {
 export type PatrimonioAccess = {
   id: string | null;
   email: string | null;
-  setor: string | null;
   role: string;
   isAdmin: boolean;
   restrictToOwnAssets: boolean;
@@ -20,7 +19,7 @@ export type PatrimonioAccess = {
 
 export async function getPatrimonioAccess(auth: AuthClaims | undefined): Promise<PatrimonioAccess> {
   const result = auth?.id
-    ? await pool.query('SELECT id, email, role, setor FROM users WHERE id = $1', [auth.id])
+    ? await pool.query('SELECT id, email, role FROM users WHERE id = $1', [auth.id])
     : { rows: [] };
   const user = result.rows[0];
   const role = typeof user?.role === 'string' ? user.role.trim().toLowerCase() : 'usuario';
@@ -28,10 +27,9 @@ export async function getPatrimonioAccess(auth: AuthClaims | undefined): Promise
   return {
     id: user?.id ?? null,
     email: user?.email ?? null,
-    setor: user?.setor ?? null,
     role,
     isAdmin: role === 'admin',
-    restrictToOwnAssets: role === 'usuario' || role === 'user' || !user,
+    restrictToOwnAssets: role !== 'admin',
   };
 }
 
@@ -42,22 +40,16 @@ export function patrimonioScope(
 ) {
   if (!access.restrictToOwnAssets) return { clause: 'TRUE', values: [] as unknown[] };
 
-  const emailParameter = firstParameter;
-  const setorParameter = firstParameter + 1;
   return {
     clause: `(
       EXISTS (
         SELECT 1 FROM responsaveis r
         WHERE r.id = ${alias}.responsavel_id
-          AND LOWER(BTRIM(r.email)) = LOWER(BTRIM($${emailParameter}))
-      )
-      OR EXISTS (
-        SELECT 1 FROM setores s
-        WHERE s.id = ${alias}.setor_id
-          AND LOWER(BTRIM(s.nome)) = LOWER(BTRIM($${setorParameter}))
+          AND LOWER(BTRIM(COALESCE(NULLIF(BTRIM(r.contato_email), ''), r.email))) =
+            LOWER(BTRIM($${firstParameter}))
       )
     )`,
-    values: [access.email, access.setor],
+    values: [access.email],
   };
 }
 

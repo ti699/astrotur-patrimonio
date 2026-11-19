@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { PoolClient } from 'pg';
 import { pool } from '../db'; // Importa a conexão do PostgreSQL
+import { requireAdminForWrites } from '../middleware/requireAdminForWrites';
 import {
   getPatrimonioAccess,
   hasFinancialFields,
@@ -9,6 +10,7 @@ import {
 } from '../utils/patrimonioAccess';
 
 const router = Router();
+router.use(requireAdminForWrites);
 
 async function comNomeResponsavel<T extends { responsavel_id?: string | null }>(patrimonio: T) {
   const result = patrimonio.responsavel_id
@@ -242,10 +244,6 @@ router.put('/:id', async (req: any, res) => {
 
 // DELETE /api/patrimonios/:id - Excluir património
 router.delete('/:id', async (req: any, res) => {
-  if (!['admin', 'gestor'].includes(req.auth?.role)) {
-    return res.status(403).json({ message: 'Apenas administradores e gestores podem excluir patrimónios' });
-  }
-
   try {
     const access = await getPatrimonioAccess(req.auth);
     const scope = patrimonioScope(access, 'p', 2);

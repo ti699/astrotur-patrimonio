@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { PoolClient } from 'pg';
 import { pool } from '../db';
+import { requireAdminForWrites } from '../middleware/requireAdminForWrites';
 import {
   getPatrimonioAccess,
   patrimonioScope,
@@ -8,6 +9,7 @@ import {
 } from '../utils/patrimonioAccess';
 
 const router = Router();
+router.use(requireAdminForWrites);
 
 const emptyToNull = (v: unknown) => (v === '' || v === undefined ? null : v);
 

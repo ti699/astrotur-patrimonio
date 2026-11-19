@@ -15,12 +15,55 @@ import adminRoutes from './routes/admin';
 import documentosRoutes from './routes/documentos';
 import uploadRoutes from './routes/upload'; // <--- Rota de upload criada com Multer
 import { authenticate, authenticateCookie } from './middleware/auth';
+import { pool } from './db';
+import { getPatrimonioAccess, patrimonioScope } from './utils/patrimonioAccess';
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL não definido');
 }
 
 const app = express();
+
+const authorizeUpload = async (req: any, res: any, next: any) => {
+  try {
+    const filename = path.basename(req.path);
+    if (!filename || req.path !== `/${filename}`) return res.status(404).end();
+
+    const access = await getPatrimonioAccess(req.auth);
+    if (access.isAdmin) return next();
+
+    const scope = patrimonioScope(access, 'p', 2);
+    const documents = await pool.query(
+      `SELECT d.categoria,
+        EXISTS (
+          SELECT 1 FROM patrimonios p
+          WHERE p.id = d.patrimonio_id AND ${scope.clause}
+        ) AS is_owner
+       FROM documentos d WHERE d.storage_path = $1`,
+      [filename, ...scope.values]
+    );
+    if (documents.rows.length > 0) {
+      const hasUnauthorizedDocument = documents.rows.some(
+        (document) =>
+          !document.is_owner ||
+          String(document.categoria ?? '').trim().toLowerCase() === 'nota fiscal'
+      );
+      return hasUnauthorizedDocument ? res.status(404).end() : next();
+    }
+
+    const photo = await pool.query(
+      `SELECT 1 FROM patrimonios p
+       WHERE p.foto_url = $1 AND ${scope.clause}
+       LIMIT 1`,
+      [`/uploads/${filename}`, ...scope.values]
+    );
+    if (photo.rows.length === 0) return res.status(404).end();
+    return next();
+  } catch (error) {
+    console.error('Erro ao validar acesso ao arquivo:', error);
+    return res.status(500).end();
+  }
+};
 
 // Middlewares
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:80,http://localhost')
@@ -32,7 +75,7 @@ app.use(express.json());
 
 // Servir os arquivos de imagem estaticamente para o navegador conseguir carregar
 // Acesso às fotos exige o cookie de sessão definido no login
-app.use('/uploads', authenticateCookie, express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
+app.use('/uploads', authenticateCookie, authorizeUpload, express.static(path.join(__dirname, '../uploads'), { index: false, dotfiles: 'deny' }));
 
 // Registar Rotas da API
 app.use('/api/auth', authRoutes);
