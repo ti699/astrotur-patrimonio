@@ -97,9 +97,9 @@ function Detail() {
           <Button variant="outline" onClick={imprimirEtiqueta}>
             <Printer className="h-4 w-4 mr-2" /> Imprimir etiqueta
           </Button>
-          <Button variant="outline" onClick={() => gerarRelatorioItem(item, isAdmin)}>
+          {isAdmin && <Button variant="outline" onClick={() => gerarRelatorioItem(item, isAdmin)}>
             <FileDown className="h-4 w-4 mr-2" /> Gerar relatório
-          </Button>
+          </Button>}
           {isAdmin && (
             <>
               <Button variant="outline" onClick={() => setTermoOpen(true)}>
@@ -146,7 +146,7 @@ function Detail() {
             <Row label="Nº de série">{item.numero_serie ?? "—"}</Row>
             <Row label="TAG da empresa">{item.tag_empresa ?? "—"}</Row>
             <Row label="Data de aquisição">{item.data_aquisicao ? new Date(item.data_aquisicao).toLocaleDateString("pt-BR") : "—"}</Row>
-            <Row label="Garantia até">{item.garantia_ate ? new Date(item.garantia_ate).toLocaleDateString("pt-BR") : "—"}</Row>
+            {isAdmin && <Row label="Garantia até">{item.garantia_ate ? new Date(item.garantia_ate).toLocaleDateString("pt-BR") : "—"}</Row>}
             <Row label="Fornecedor">{item.fornecedor ?? "—"}</Row>
             <Row label="Setor">{item.setor?.nome ?? "—"}</Row>
             <Row label="Responsável">{item.responsavel_nome ?? item.responsavel?.nome ?? "—"}</Row>

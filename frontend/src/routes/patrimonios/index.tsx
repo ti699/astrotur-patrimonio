@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { api } from "@/services/api";
 import { Card } from "@/components/ui/card";
@@ -119,7 +119,7 @@ const apiErrorMessage = (error: unknown, fallback: string) =>
 
 function List() {
   const router = useRouter();
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const canDelete = isAdmin;
   const [items, setItems] = useState<Patrimonio[]>([]);
   const [setores, setSetores] = useState<SelectOption[]>([]);
@@ -142,27 +142,32 @@ function List() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [resPatrimonios, resSetores, resResponsaveis] = await Promise.all([
-        api.get<Patrimonio[]>("/patrimonios"),
-        api.get<SelectOption[]>("/setores"),
-        api.get<SelectOption[]>("/responsaveis"),
-      ]);
+      const resPatrimonios = await api.get<Patrimonio[]>("/patrimonios");
       setItems(resPatrimonios.data ?? []);
-      setSetores(resSetores.data ?? []);
-      setResponsaveis(resResponsaveis.data ?? []);
+      if (isAdmin) {
+        const [resSetores, resResponsaveis] = await Promise.all([
+          api.get<SelectOption[]>("/setores"),
+          api.get<SelectOption[]>("/responsaveis"),
+        ]);
+        setSetores(resSetores.data ?? []);
+        setResponsaveis(resResponsaveis.data ?? []);
+      } else {
+        setSetores([]);
+        setResponsaveis([]);
+      }
     } catch {
       // falha silenciosa
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin]);
 
   useEffect(() => {
-    load();
-  }, []);
+    if (!authLoading) void load();
+  }, [authLoading, load]);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -358,7 +363,7 @@ function List() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={fSetor} onValueChange={setFSetor}>
+          {isAdmin && <Select value={fSetor} onValueChange={setFSetor}>
             <SelectTrigger>
               <SelectValue placeholder="Setor" />
             </SelectTrigger>
@@ -370,7 +375,7 @@ function List() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
           <Select value={fEstado} onValueChange={setFEstado}>
             <SelectTrigger>
               <SelectValue placeholder="Estado" />
@@ -384,7 +389,7 @@ function List() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={fResp} onValueChange={setFResp}>
+          {isAdmin && <Select value={fResp} onValueChange={setFResp}>
             <SelectTrigger>
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
@@ -396,7 +401,7 @@ function List() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
           {isAdmin && (
             <>
               <Input
@@ -413,7 +418,7 @@ function List() {
               />
             </>
           )}
-          <Select value={fGar} onValueChange={setFGar}>
+          {isAdmin && <Select value={fGar} onValueChange={setFGar}>
             <SelectTrigger>
               <SelectValue placeholder="Garantia" />
             </SelectTrigger>
@@ -423,7 +428,7 @@ function List() {
               <SelectItem value="proxima">Próxima do vencimento</SelectItem>
               <SelectItem value="vencida">Garantia vencida</SelectItem>
             </SelectContent>
-          </Select>
+          </Select>}
         </div>
       </Card>
 
@@ -438,7 +443,7 @@ function List() {
                 <th className="px-4 py-3 text-left">Setor</th>
                 <th className="px-4 py-3 text-left">Responsável</th>
                 <th className="px-4 py-3 text-left">Estado</th>
-                <th className="px-4 py-3 text-left">Garantia</th>
+                {isAdmin && <th className="px-4 py-3 text-left">Garantia</th>}
                 {isAdmin && <th className="px-4 py-3 text-right">Valor</th>}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
@@ -446,14 +451,14 @@ function List() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 9 : 7} className="px-4 py-8 text-center text-muted-foreground">
                     Carregando...
                   </td>
                 </tr>
               )}
               {!loading && pageItems.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 9 : 7} className="px-4 py-8 text-center text-muted-foreground">
                     {items.length === 0
                       ? "Nenhum patrimônio vinculado ao seu usuário no momento."
                       : "Nenhum item encontrado."}
@@ -492,7 +497,7 @@ function List() {
                       ></span>
                       {i.estado_conservacao}
                     </td>
-                    <td className="px-4 py-3">
+                    {isAdmin && <td className="px-4 py-3">
                       {gs === "sem_garantia" ? (
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : (
@@ -512,7 +517,7 @@ function List() {
                           {new Date(fim + "T00:00:00").toLocaleDateString("pt-BR")}
                         </div>
                       )}
-                    </td>
+                    </td>}
                     {isAdmin && <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>}
                     <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
                       <div className="flex justify-end gap-1">

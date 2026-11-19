@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/services/api";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowRightLeft, Plus, Loader2, Filter, X, Eye } from "lucide-react";
 import { ReportActions } from "@/components/ReportActions";
@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 export const Route = createFileRoute("/movimentacoes")({ component: MovPage });
 
 function MovPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [patrimonios, setPatrimonios] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
@@ -37,23 +37,35 @@ function MovPage() {
   const [fDataIni, setFDataIni] = useState<string>("");
   const [fDataFim, setFDataFim] = useState<string>("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, p, s, r] = await Promise.all([
+      const [m, p] = await Promise.all([
         api.get("/movimentacoes"),
         api.get("/patrimonios"),
-        api.get("/setores"),
-        api.get("/responsaveis"),
       ]);
-      setRows(m.data ?? []); setPatrimonios(p.data ?? []); setSetores(s.data ?? []); setResponsaveis(r.data ?? []);
+      setRows(m.data ?? []);
+      setPatrimonios(p.data ?? []);
+      if (isAdmin) {
+        const [s, r] = await Promise.all([
+          api.get("/setores"),
+          api.get("/responsaveis"),
+        ]);
+        setSetores(s.data ?? []);
+        setResponsaveis(r.data ?? []);
+      } else {
+        setSetores([]);
+        setResponsaveis([]);
+      }
     } catch {
       // falha silenciosa
     } finally {
       setLoading(false);
     }
-  };
-  useEffect(() => { load(); }, []);
+  }, [isAdmin]);
+  useEffect(() => {
+    if (!authLoading) void load();
+  }, [authLoading, load]);
 
   const filtradas = useMemo(() => {
     return rows.filter((m) => {
@@ -166,7 +178,7 @@ function MovPage() {
               </SelectContent>
             </Select>
           </div>
-          <div><Label className="text-xs">Responsável</Label>
+          {isAdmin && <div><Label className="text-xs">Responsável</Label>
             <Select value={fResponsavel || "all"} onValueChange={(v) => setFResponsavel(v === "all" ? "" : v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -174,8 +186,8 @@ function MovPage() {
                 {responsaveis.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          <div><Label className="text-xs">Setor</Label>
+          </div>}
+          {isAdmin && <div><Label className="text-xs">Setor</Label>
             <Select value={fSetor || "all"} onValueChange={(v) => setFSetor(v === "all" ? "" : v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -183,7 +195,7 @@ function MovPage() {
                 {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
+          </div>}
           <div><Label className="text-xs">Data início</Label><Input type="date" value={fDataIni} onChange={(e) => setFDataIni(e.target.value)} /></div>
           <div><Label className="text-xs">Data fim</Label><Input type="date" value={fDataFim} onChange={(e) => setFDataFim(e.target.value)} /></div>
         </div>

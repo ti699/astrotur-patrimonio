@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { AppLayout, RequireAdmin } from "@/components/AppLayout";
 import { api } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import { exportCSV, gerarRelatorioTabela } from "@/lib/relatorios";
 import { ShieldX, ShieldAlert, ShieldCheck, Shield, FileText, FileDown, Search, Eye } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/garantias")({ component: Garantias });
+export const Route = createFileRoute("/garantias")({
+  component: () => <RequireAdmin><Garantias /></RequireAdmin>,
+});
 
 type Filtro = "all" | GarantiaStatus | "proxima";
 

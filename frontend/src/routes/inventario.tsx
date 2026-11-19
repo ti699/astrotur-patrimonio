@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   ClipboardCheck, Play, CheckCircle2, XCircle, AlertTriangle, Wrench,
@@ -33,7 +33,7 @@ const statusMeta: Record<StatusT, { color: string; icon: any }> = {
 };
 
 function InventarioPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [patrimonios, setPatrimonios] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
   const [responsaveis, setResponsaveis] = useState<any[]>([]);
@@ -57,18 +57,25 @@ function InventarioPage() {
   const [obs, setObs] = useState("");
   const [salvando, setSalvando] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, s, r, inventarios] = await Promise.all([
+      const [p, inventarios] = await Promise.all([
         api.get("/patrimonios"),
-        api.get("/setores"),
-        api.get("/responsaveis"),
         api.get("/inventarios"),
       ]);
       setPatrimonios(p.data ?? []);
-      setSetores(s.data ?? []);
-      setResponsaveis(r.data ?? []);
+      if (isAdmin) {
+        const [s, r] = await Promise.all([
+          api.get("/setores"),
+          api.get("/responsaveis"),
+        ]);
+        setSetores(s.data ?? []);
+        setResponsaveis(r.data ?? []);
+      } else {
+        setSetores([]);
+        setResponsaveis([]);
+      }
       const ultimas: Record<string, any> = {};
       (inventarios.data ?? []).forEach((registro: any) => {
         if (!ultimas[registro.patrimonio_id]) ultimas[registro.patrimonio_id] = registro;
@@ -91,8 +98,10 @@ function InventarioPage() {
     } finally {
       setLoading(false);
     }
-  };
-  useEffect(() => { load(); }, []);
+  }, [isAdmin]);
+  useEffect(() => {
+    if (!authLoading) void load();
+  }, [authLoading, load]);
 
   const iniciarInventario = () => {
     const id = crypto.randomUUID();
@@ -240,8 +249,8 @@ function InventarioPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={exportarPDF}><FileDown className="h-4 w-4 mr-2" />PDF</Button>
-          <Button variant="outline" onClick={exportarCSV}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel/CSV</Button>
+          {isAdmin && <Button variant="outline" onClick={exportarPDF}><FileDown className="h-4 w-4 mr-2" />PDF</Button>}
+          {isAdmin && <Button variant="outline" onClick={exportarCSV}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel/CSV</Button>}
           {isAdmin && (sessaoId ? (
             <Button variant="destructive" onClick={encerrarInventario}>Encerrar Inventário</Button>
           ) : (
@@ -272,7 +281,7 @@ function InventarioPage() {
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div><Label className="text-xs">Setor</Label>
+          {isAdmin && <div><Label className="text-xs">Setor</Label>
             <Select value={fSetor || "all"} onValueChange={(v) => setFSetor(v === "all" ? "" : v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -280,7 +289,7 @@ function InventarioPage() {
                 {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
+          </div>}
           <div><Label className="text-xs">Categoria</Label>
             <Select value={fCategoria || "all"} onValueChange={(v) => setFCategoria(v === "all" ? "" : v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -290,7 +299,7 @@ function InventarioPage() {
               </SelectContent>
             </Select>
           </div>
-          <div><Label className="text-xs">Responsável</Label>
+          {isAdmin && <div><Label className="text-xs">Responsável</Label>
             <Select value={fResponsavel || "all"} onValueChange={(v) => setFResponsavel(v === "all" ? "" : v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -298,7 +307,7 @@ function InventarioPage() {
                 {responsaveis.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
+          </div>}
           <div><Label className="text-xs">Buscar</Label>
             <Input placeholder="Código ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
@@ -319,7 +328,11 @@ function InventarioPage() {
             </TableHeader>
             <TableBody>
               {filtrados.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum patrimônio</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  {!isAdmin && patrimonios.length === 0
+                    ? "Nenhum patrimônio vinculado ao seu usuário no momento."
+                    : "Nenhum patrimônio encontrado."}
+                </TableCell></TableRow>
               ) : filtrados.map((p) => {
                 const v = verificacoes[p.id];
                 const status = v?.status_verificacao as StatusT | undefined;

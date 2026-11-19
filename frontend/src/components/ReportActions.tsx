@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { exportCSV, gerarTabelaHTML, imprimirPDF } from "@/lib/relatorios";
 import { Download, FileText } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 type ReportColumn = {
   key: string;
@@ -16,9 +17,11 @@ export function ReportActions({ title, filename, rows, columns }: {
   rows: Record<string, any>[];
   columns: ReportColumn[];
 }) {
+  const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const exportarPDF = () => imprimirPDF(title, gerarTabelaHTML(rows, columns));
   const exportarCSV = () => exportCSV(rows, `${filename}-${Date.now()}.csv`);
+  if (!isAdmin) return null;
 
   return (
     <>

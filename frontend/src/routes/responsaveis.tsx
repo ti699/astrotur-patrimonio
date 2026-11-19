@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { AppLayout, RequireAdmin } from "@/components/AppLayout";
 import { api } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import { formatBRL } from "@/lib/categorias";
 import { ReportActions } from "@/components/ReportActions";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/responsaveis")({ component: Page });
+export const Route = createFileRoute("/responsaveis")({
+  component: () => <RequireAdmin><Page /></RequireAdmin>,
+});
 
 function Page() {
   const { isAdmin } = useAuth();

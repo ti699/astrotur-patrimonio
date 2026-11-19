@@ -17,18 +17,13 @@ const COLORS = ["#C0392B", "#E67E22", "#7F8C8D", "#9B59B6", "#3498DB", "#16A085"
 function Dashboard() {
   const { isAdmin } = useAuth();
   const [items, setItems] = useState<any[]>([]);
-  const [setores, setSetores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [resPatrimonios, resSetores] = await Promise.all([
-          api.get("/patrimonios"),
-          api.get("/setores"),
-        ]);
+        const resPatrimonios = await api.get("/patrimonios");
         setItems(resPatrimonios.data ?? []);
-        setSetores(resSetores.data ?? []);
       } catch {
         // falha silenciosa — exibe dashboard vazio
       } finally {
@@ -72,9 +67,10 @@ function Dashboard() {
             <StatCard icon={Package} label="Total de Itens" value={totalItens.toString()} />
             {isAdmin && <StatCard icon={DollarSign} label="Valor Total" value={formatBRL(valorTotal)} />}
             <StatCard icon={Layers} label="Categorias" value={Object.keys(porCategoria).length.toString()} />
-            <StatCard icon={Building2} label="Setores Ativos" value={Object.keys(porSetor).length.toString()} />
+            {isAdmin && <StatCard icon={Building2} label="Setores Ativos" value={Object.keys(porSetor).length.toString()} />}
           </div>
 
+          {isAdmin && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Controle de Garantias</h3>
@@ -103,6 +99,7 @@ function Dashboard() {
               />
             </div>
           </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <Card className="p-6 bg-card border-border">
@@ -116,7 +113,7 @@ function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
             </Card>
-            <Card className="p-6 bg-card border-border">
+            {isAdmin && <Card className="p-6 bg-card border-border">
               <h3 className="text-sm font-semibold text-foreground mb-4">Itens por Setor</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={setData}>
@@ -126,7 +123,7 @@ function Dashboard() {
                   <Bar dataKey="value" fill="#C0392B" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </Card>
+            </Card>}
           </div>
 
           <Card className="bg-card border-border">
@@ -141,21 +138,21 @@ function Dashboard() {
                     <th className="px-4 py-3 text-left">Código</th>
                     <th className="px-4 py-3 text-left">Nome</th>
                     <th className="px-4 py-3 text-left">Categoria</th>
-                    <th className="px-4 py-3 text-left">Setor</th>
+                    {isAdmin && <th className="px-4 py-3 text-left">Setor</th>}
                     <th className="px-4 py-3 text-left">Estado</th>
                     {isAdmin && <th className="px-4 py-3 text-right">Valor</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {ultimos.length === 0 && (
-                    <tr><td colSpan={isAdmin ? 6 : 5} className="px-4 py-8 text-center text-muted-foreground">Nenhum item cadastrado ainda.</td></tr>
+                  <tr><td colSpan={isAdmin ? 6 : 4} className="px-4 py-8 text-center text-muted-foreground">Nenhum item cadastrado ainda.</td></tr>
                   )}
                   {ultimos.map((i) => (
                     <tr key={i.id} className="border-t border-border hover:bg-muted/20">
                       <td className="px-4 py-3 font-mono text-primary">{i.codigo}</td>
                       <td className="px-4 py-3">{i.nome}</td>
                       <td className="px-4 py-3 text-muted-foreground">{i.categoria}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{i.setor?.nome ?? "—"}</td>
+                      {isAdmin && <td className="px-4 py-3 text-muted-foreground">{i.setor?.nome ?? "—"}</td>}
                       <td className="px-4 py-3"><span className={`inline-block w-2 h-2 rounded-full mr-2 ${estadoColor[i.estado_conservacao as keyof typeof estadoColor] ?? "bg-muted"}`}></span>{i.estado_conservacao}</td>
                       {isAdmin && <td className="px-4 py-3 text-right font-medium">{formatBRL(i.valor_atual)}</td>}
                     </tr>

@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { Archive, Eye, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
-import { AppLayout } from "@/components/AppLayout";
+import { AppLayout, RequireAdmin } from "@/components/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,7 +38,9 @@ import {
 } from "@/components/ui/table";
 import { api } from "@/services/api";
 
-export const Route = createFileRoute("/baixas")({ component: Baixas });
+export const Route = createFileRoute("/baixas")({
+  component: () => <RequireAdmin><Baixas /></RequireAdmin>,
+});
 
 type PatrimonioBaixado = {
   id: string;

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { AppLayout, RequireAdmin } from "@/components/AppLayout";
 import { api } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import { exportCSV, gerarRelatorioTabela } from "@/lib/relatorios";
 import { FileDown, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
-export const Route = createFileRoute("/relatorios")({ component: Relatorios });
+export const Route = createFileRoute("/relatorios")({
+  component: () => <RequireAdmin><Relatorios /></RequireAdmin>,
+});
 
 const isDescartado = (status: unknown) => String(status ?? "").trim().toUpperCase() === "DESCARTADO";
 

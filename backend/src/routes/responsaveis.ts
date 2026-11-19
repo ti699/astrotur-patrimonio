@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { pool } from '../db';
-import { requireAdminForWrites } from '../middleware/requireAdminForWrites';
+import { requireAdmin } from '../middleware/requireAdminForWrites';
 
 const router = Router();
-router.use(requireAdminForWrites);
+router.use(requireAdmin);
 
 router.get('/', async (req, res) => {
   try {

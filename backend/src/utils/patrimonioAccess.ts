@@ -69,6 +69,8 @@ export async function patrimonioIsAccessible(
 
 const isFinancialField = (key: string) =>
   /^(valor(?:_|$)|preco(?:_|$)|custo(?:_|$)|price(?:_|$)|cost(?:_|$))/i.test(key);
+const isGuaranteeField = (key: string) =>
+  /^(garantia(?:_|$)|data_(?:inicio|fim)_garantia$|numero_garantia$)/i.test(key);
 
 export function hasFinancialFields(value: unknown): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -89,6 +91,22 @@ export function redactFinancialFields<T>(value: T): T {
   ) as T;
 }
 
+export function redactRestrictedFields<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactRestrictedFields(item)) as T;
+  }
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      key,
+      isFinancialField(key) || isGuaranteeField(key)
+        ? null
+        : redactRestrictedFields(item),
+    ]),
+  ) as T;
+}
+
 export function protectFinancialResponse<T>(value: T, access: PatrimonioAccess): T {
-  return access.isAdmin ? value : redactFinancialFields(value);
+  return access.isAdmin ? value : redactRestrictedFields(value);
 }
