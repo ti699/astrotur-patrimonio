@@ -19,13 +19,22 @@ router.get('/', async (req, res) => {
   }
 });
 
-const values = (b: any) => [b.nome, b.cargo || null, b.setor_id || null, b.contato_email || null, b.contato_telefone || null];
+const values = (b: any) => [
+  b.nome,
+  b.cargo || null,
+  b.setor_id || null,
+  typeof b.email === 'string' ? b.email.trim() || null : null,
+  typeof b.contato_email === 'string' ? b.contato_email.trim() || null : null,
+  b.contato_telefone || null,
+  typeof b.ativo === 'boolean' ? b.ativo : null,
+];
 
 router.post('/', async (req, res) => {
   if (!req.body.nome) return res.status(400).json({ message: 'Nome é obrigatório' });
   try {
     const result = await pool.query(
-      'INSERT INTO responsaveis (nome, cargo, setor_id, contato_email, contato_telefone) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      `INSERT INTO responsaveis (nome, cargo, setor_id, email, contato_email, contato_telefone, ativo)
+       VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7, TRUE)) RETURNING *`,
       values(req.body)
     );
     res.status(201).json(result.rows[0]);
@@ -39,7 +48,10 @@ router.put('/:id', async (req, res) => {
   if (!req.body.nome) return res.status(400).json({ message: 'Nome é obrigatório' });
   try {
     const result = await pool.query(
-      'UPDATE responsaveis SET nome=$1, cargo=$2, setor_id=$3, contato_email=$4, contato_telefone=$5 WHERE id=$6 RETURNING *',
+      `UPDATE responsaveis
+       SET nome=$1, cargo=$2, setor_id=$3, email=$4, contato_email=$5, contato_telefone=$6,
+           ativo=COALESCE($7, ativo)
+       WHERE id=$8 RETURNING *`,
       [...values(req.body), req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Responsável não encontrado' });

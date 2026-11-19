@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { pool } from '../db';
 import { authenticate, JWT_SECRET, setSessionCookie, clearSessionCookie, readCookie, COOKIE_NAME } from '../middleware/auth';
 import { isCorporateEmail } from '../utils/email';
+import { ensureResponsavelForUser } from '../utils/responsavelProvisioning';
 
 const router = Router();
 
@@ -38,6 +39,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Palavra-passe inválida' });
     }
 
+    await ensureResponsavelForUser(user);
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 
     setSessionCookie(res, token);
@@ -81,6 +83,7 @@ router.post('/signup', async (req, res) => {
       [String(nome).trim(), normalizedEmail, hash, role, cargo || null, setor || null]
     );
     const user = result.rows[0];
+    await ensureResponsavelForUser(user);
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     setSessionCookie(res, token);
     res.status(201).json({ token, user: publicUser(user) });
@@ -196,6 +199,7 @@ router.post('/sso', async (req, res) => {
       return res.status(403).json({ message: 'Utilizador desativado' });
     }
 
+    await ensureResponsavelForUser(user);
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     setSessionCookie(res, token);
     res.json({ token, user: publicUser(user) });
@@ -220,6 +224,7 @@ router.get('/me', authenticate, async (req: any, res) => {
   try {
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.auth.id]);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Utilizador não encontrado' });
+    await ensureResponsavelForUser(result.rows[0]);
     res.json(publicUser(result.rows[0]));
   } catch (error) {
     console.error(error);

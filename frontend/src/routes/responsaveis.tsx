@@ -27,7 +27,15 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<any | null>(null);
-  const [form, setForm] = useState({ nome: "", cargo: "", setor_id: "", contato_email: "", contato_telefone: "" });
+  const [form, setForm] = useState({
+    nome: "",
+    cargo: "",
+    setor_id: "",
+    email: "",
+    contato_email: "",
+    contato_telefone: "",
+    ativo: true,
+  });
 
   const load = async () => {
     try {
@@ -46,8 +54,8 @@ function Page() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setEditing(null); setForm({ nome: "", cargo: "", setor_id: "", contato_email: "", contato_telefone: "" }); setOpen(true); };
-  const openEdit = (r: any) => { setEditing(r); setForm({ nome: r.nome, cargo: r.cargo ?? "", setor_id: r.setor_id ?? "", contato_email: r.contato_email ?? "", contato_telefone: r.contato_telefone ?? "" }); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ nome: "", cargo: "", setor_id: "", email: "", contato_email: "", contato_telefone: "", ativo: true }); setOpen(true); };
+  const openEdit = (r: any) => { setEditing(r); setForm({ nome: r.nome, cargo: r.cargo ?? "", setor_id: r.setor_id ?? "", email: r.email ?? "", contato_email: r.contato_email ?? "", contato_telefone: r.contato_telefone ?? "", ativo: r.ativo !== false }); setOpen(true); };
 
   const save = async () => {
     if (!form.nome) return toast.error("Informe o nome");
@@ -78,7 +86,7 @@ function Page() {
           <p className="text-sm text-muted-foreground">{list.length} pessoa(s) cadastrada(s)</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ReportActions title="Relatório completo de Responsáveis" filename="relatorio-responsaveis" rows={list.map((r) => ({ nome: r.nome, cargo: r.cargo ?? "—", setor: r.setor?.nome ?? "—", contato_email: r.contato_email ?? "—", contato_telefone: r.contato_telefone ?? "—", itens: (itensPorResp[r.id] ?? []).length }))} columns={[{ key: "nome", label: "Nome" }, { key: "cargo", label: "Cargo" }, { key: "setor", label: "Setor" }, { key: "contato_email", label: "E-mail" }, { key: "contato_telefone", label: "Telefone" }, { key: "itens", label: "Itens" }]} />
+          <ReportActions title="Relatório completo de Responsáveis" filename="relatorio-responsaveis" rows={list.map((r) => ({ nome: r.nome, email: r.email ?? "—", cargo: r.cargo ?? "—", setor: r.setor?.nome ?? "—", ativo: r.ativo ? "Sim" : "Não", contato_email: r.contato_email ?? "—", contato_telefone: r.contato_telefone ?? "—", itens: (itensPorResp[r.id] ?? []).length }))} columns={[{ key: "nome", label: "Nome" }, { key: "email", label: "E-mail" }, { key: "cargo", label: "Cargo" }, { key: "setor", label: "Setor" }, { key: "ativo", label: "Ativo" }, { key: "contato_email", label: "E-mail de contato" }, { key: "contato_telefone", label: "Telefone" }, { key: "itens", label: "Itens" }]} />
           {isAdmin && <Button onClick={openNew} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Novo Responsável</Button>}
         </div>
       </div>
@@ -98,7 +106,8 @@ function Page() {
                   <div className="font-medium">{r.nome}</div>
                   <div className="text-xs text-muted-foreground">{r.cargo ?? "—"} {r.setor?.nome ? `· ${r.setor.nome}` : ""}</div>
                 </div>
-                <div className="text-sm text-muted-foreground hidden md:block">{r.contato_email}</div>
+                <div className="text-sm text-muted-foreground hidden md:block">{r.email ?? r.contato_email ?? "—"}</div>
+                <div className={`text-xs ${r.ativo ? "text-green-600" : "text-muted-foreground"}`}>{r.ativo ? "Ativo" : "Inativo"}</div>
                 <div className="text-sm">{items.length} <span className="text-xs text-muted-foreground">itens</span></div>
                 {isAdmin && <div className="flex gap-1">
                   <button onClick={() => openEdit(r)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-primary"><Pencil className="h-4 w-4" /></button>
@@ -143,13 +152,21 @@ function Page() {
             <div><Label>Cargo</Label><Input value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} /></div>
             <div>
               <Label>Setor</Label>
-              <Select value={form.setor_id} onValueChange={(v) => setForm({ ...form, setor_id: v })}>
+              <Select value={form.setor_id || "none"} onValueChange={(v) => setForm({ ...form, setor_id: v === "none" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  <SelectItem value="none">Sem setor</SelectItem>
+                  {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
-            <div><Label>E-mail</Label><Input type="email" value={form.contato_email} onChange={(e) => setForm({ ...form, contato_email: e.target.value })} /></div>
+            <div><Label>E-mail</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+            <div><Label>E-mail de contato</Label><Input type="email" value={form.contato_email} onChange={(e) => setForm({ ...form, contato_email: e.target.value })} /></div>
             <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={(e) => setForm({ ...form, contato_telefone: e.target.value })} /></div>
+            <Label className="flex items-center gap-2">
+              <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} />
+              Ativo
+            </Label>
             <Button onClick={save} className="w-full bg-primary hover:bg-primary/90">Salvar</Button>
           </div>
         </DialogContent>

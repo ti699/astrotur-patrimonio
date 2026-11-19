@@ -1,5 +1,6 @@
 -- Idempotente: pode ser executado manualmente em bancos já existentes.
 ALTER TABLE responsaveis ADD COLUMN IF NOT EXISTS setor_id UUID REFERENCES setores(id) ON DELETE SET NULL;
+ALTER TABLE responsaveis ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE responsaveis ADD COLUMN IF NOT EXISTS contato_email VARCHAR(255);
 ALTER TABLE responsaveis ADD COLUMN IF NOT EXISTS contato_telefone VARCHAR(50);
 
