@@ -45,7 +45,7 @@ export async function ensureResponsavelForUser(user: UserForResponsavel) {
       }
 
       await client.query(
-        'INSERT INTO responsaveis (nome, email, setor_id, ativo) VALUES ($1, $2, $3, TRUE)',
+        'INSERT INTO responsaveis (nome, email, setor_id) VALUES ($1, $2, $3)',
         [nome, email, setorId]
       );
     }

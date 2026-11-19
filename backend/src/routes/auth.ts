@@ -199,7 +199,11 @@ router.post('/sso', async (req, res) => {
       return res.status(403).json({ message: 'Utilizador desativado' });
     }
 
-    await ensureResponsavelForUser(user);
+    try {
+      await ensureResponsavelForUser(user);
+    } catch (error) {
+      console.error('Erro ao sincronizar responsável durante login SSO:', error);
+    }
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     setSessionCookie(res, token);
     res.json({ token, user: publicUser(user) });
