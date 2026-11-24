@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db';
 import { isCorporateEmail } from '../utils/email';
+import { ensurePatrimonioModelosColumn } from '../utils/patrimonioModelos';
 
 const router = Router();
 
@@ -13,6 +14,43 @@ const requireAdmin = (req: any, res: any, next: any) => {
 router.use(requireAdmin);
 
 const USER_COLS = 'id, nome, email, role, cargo, setor, status, avatar_url, created_at';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+function isValidPatrimonioModelos(value: unknown): boolean {
+  if (!Array.isArray(value)) return false;
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  const specKeys = new Set(['processador', 'ram_gb', 'ram_tipo', 'armaz_tipo', 'armaz_gb', 'so']);
+
+  for (const item of value) {
+    if (!isRecord(item) || !isRecord(item.specs)) return false;
+    const { id, nome, categoria, subcategoria, marca, modelo, specs } = item;
+    if (
+      typeof id !== 'string' || !id.trim() || id === 'manual' ||
+      typeof nome !== 'string' || !nome.trim() || nome.trim().length > 100 ||
+      typeof categoria !== 'string' || !categoria.trim() ||
+      typeof subcategoria !== 'string' || !subcategoria.trim() ||
+      typeof marca !== 'string' || typeof modelo !== 'string'
+    ) return false;
+
+    const normalizedName = nome.trim().toLocaleLowerCase();
+    if (ids.has(id) || names.has(normalizedName)) return false;
+    ids.add(id);
+    names.add(normalizedName);
+
+    for (const [key, spec] of Object.entries(specs)) {
+      if (!specKeys.has(key)) return false;
+      if (key === 'ram_gb' || key === 'armaz_gb') {
+        if (spec !== null && (typeof spec !== 'number' || !Number.isFinite(spec))) return false;
+      } else if (typeof spec !== 'string') {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 /* ---------- Utilizadores ---------- */
 router.get('/users', async (_req, res) => {
@@ -98,10 +136,11 @@ router.delete('/users/:id', async (req: any, res) => {
 
 /* ---------- Configurações da aplicação ---------- */
 const SETTINGS_FIELDS = ['company_name', 'cnpj', 'email', 'phone', 'address', 'website', 'logo_url',
-  'primary_color', 'patrimonio_prefix', 'currency', 'items_per_page', 'dark_mode'];
+  'primary_color', 'patrimonio_prefix', 'currency', 'items_per_page', 'dark_mode', 'patrimonio_modelos'];
 
 router.get('/settings', async (_req, res) => {
   try {
+    await ensurePatrimonioModelosColumn();
     let result = await pool.query('SELECT * FROM app_settings LIMIT 1');
     if (result.rows.length === 0) result = await pool.query('INSERT INTO app_settings DEFAULT VALUES RETURNING *');
     res.json(result.rows[0]);
@@ -114,7 +153,11 @@ router.get('/settings', async (_req, res) => {
 router.put('/settings', async (req, res) => {
   const fields = SETTINGS_FIELDS.filter((f) => req.body[f] !== undefined);
   if (fields.length === 0) return res.status(400).json({ message: 'Nada para atualizar' });
+  if (req.body.patrimonio_modelos !== undefined && !isValidPatrimonioModelos(req.body.patrimonio_modelos)) {
+    return res.status(400).json({ message: 'Lista de modelos padrão inválida' });
+  }
   try {
+    await ensurePatrimonioModelosColumn();
     const current = await pool.query('SELECT id FROM app_settings LIMIT 1');
     const id = current.rows.length ? current.rows[0].id : (await pool.query('INSERT INTO app_settings DEFAULT VALUES RETURNING id')).rows[0].id;
     const sets = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');

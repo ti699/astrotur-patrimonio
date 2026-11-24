@@ -10,6 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { CATEGORIAS, ESTADOS, STATUS, categoriaPrefixo, type Categoria } from "@/lib/categorias";
 import { DynamicSpecsFields } from "@/components/DynamicSpecsFields";
+import { PatrimonioModelosDialog } from "@/components/PatrimonioModelosDialog";
+import { DEFAULT_PATRIMONIO_MODELOS, type PatrimonioModelo } from "@/lib/patrimonioModelos";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown, Loader2, Upload, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +45,8 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
   });
   const [setores, setSetores] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioProfile[]>([]);
+  const [modelos, setModelos] = useState<PatrimonioModelo[]>(DEFAULT_PATRIMONIO_MODELOS);
+  const [selectedModeloId, setSelectedModeloId] = useState("manual");
   const [responsavelOpen, setResponsavelOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -50,21 +54,57 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const [setoresRes, usuariosRes] = await Promise.all([
-          api.get("/setores"),
-          api.get("/admin/users"),
-        ]);
+        const setoresRes = await api.get("/setores");
         setSetores(setoresRes.data ?? []);
-        setUsuarios((usuariosRes.data ?? []).filter((usuario: UsuarioProfile) => usuario.status === "active"));
       } catch (err) {
-        console.error("Erro ao carregar setores ou usuários:", err);
-        toast.error("Erro ao carregar setores ou usuários.");
+        console.error("Erro ao carregar setores:", err);
+        toast.error("Erro ao carregar setores.");
+      }
+      try {
+        const modelosRes = await api.get("/patrimonios/modelos");
+        if (Array.isArray(modelosRes.data)) setModelos(modelosRes.data);
+      } catch (err) {
+        console.error("Erro ao carregar modelos padrão:", err);
+        toast.error("Erro ao carregar os modelos padrão.");
+      }
+      if (isAdmin) {
+        try {
+          const usuariosRes = await api.get("/admin/users");
+          setUsuarios((usuariosRes.data ?? []).filter((usuario: UsuarioProfile) => usuario.status === "active"));
+        } catch (err) {
+          console.error("Erro ao carregar usuários:", err);
+          toast.error("Erro ao carregar usuários.");
+        }
       }
     })();
-  }, []);
+  }, [isAdmin]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const setSpec = (k: string, v: any) => setForm((f: any) => ({ ...f, specs: { ...(f.specs ?? {}), [k]: v } }));
+
+  const aplicarModelo = (id: string) => {
+    setSelectedModeloId(id);
+    if (id === "manual") return;
+    const preset = modelos.find((modelo) => modelo.id === id);
+    if (!preset) return;
+
+    setForm((current) => ({
+      ...current,
+      categoria: preset.categoria,
+      subcategoria: preset.subcategoria,
+      marca: preset.marca,
+      modelo: preset.modelo,
+      specs: {
+        ...(current.specs ?? {}),
+        processador: preset.specs.processador ?? "",
+        ram_gb: preset.specs.ram_gb ?? null,
+        ram_tipo: preset.specs.ram_tipo ?? "",
+        armaz_tipo: preset.specs.armaz_tipo ?? "",
+        armaz_gb: preset.specs.armaz_gb ?? null,
+        so: preset.specs.so ?? "",
+      },
+    }));
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +176,36 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
   return (
     <Card className="p-6 bg-card border-border">
       <form onSubmit={submit} className="space-y-6">
+        <Section title="Modelo padrão">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="Modelo Padrão">
+              <Select value={selectedModeloId} onValueChange={aplicarModelo}>
+                <SelectTrigger><SelectValue placeholder="Manual" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  {modelos.map((modelo) => (
+                    <SelectItem key={modelo.id} value={modelo.id}>{modelo.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            {isAdmin && (
+              <PatrimonioModelosDialog
+                modelos={modelos}
+                onModelosChange={(novosModelos) => {
+                  setModelos(novosModelos);
+                  if (!novosModelos.some((modelo) => modelo.id === selectedModeloId)) {
+                    setSelectedModeloId("manual");
+                  }
+                }}
+              />
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Aplicar um modelo preenche categoria, marca, modelo e especificações comuns; os demais dados da máquina são preservados.
+          </p>
+        </Section>
+
         <Section title="Identificação">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label={initial?.id ? "Nº do patrimônio" : `Nº do patrimônio (vazio = automático${form.categoria ? `, faixa ${categoriaPrefixo(form.categoria)}` : ""})`}>
