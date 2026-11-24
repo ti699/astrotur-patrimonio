@@ -19,6 +19,26 @@ async function comNomeResponsavel<T extends { responsavel_id?: string | null }>(
   return { ...patrimonio, responsavel_nome: result.rows[0]?.nome ?? null };
 }
 
+async function resolverResponsavelId(nome: unknown, fallbackId: unknown): Promise<string | null> {
+  if (nome === undefined) {
+    return typeof fallbackId === 'string' && fallbackId ? fallbackId : null;
+  }
+  if (typeof nome !== 'string' || !nome.trim()) return null;
+
+  const nomeNormalizado = nome.trim();
+  const existing = await pool.query(
+    'SELECT id FROM responsaveis WHERE LOWER(BTRIM(nome)) = LOWER($1) LIMIT 1',
+    [nomeNormalizado]
+  );
+  if (existing.rows.length > 0) return existing.rows[0].id;
+
+  const created = await pool.query(
+    'INSERT INTO responsaveis (nome) VALUES ($1) RETURNING id',
+    [nomeNormalizado]
+  );
+  return created.rows[0].id;
+}
+
 // O histórico nunca deve impedir o salvamento do patrimônio
 const registrarHistorico = async (patrimonioId: string, acao: string, descricao: string, usuarioId: string | null) => {
   try {
@@ -89,11 +109,15 @@ router.post('/', async (req: any, res) => {
     tag_empresa, fornecedor, data_aquisicao, garantia_ate, data_compra,
     data_inicio_garantia, data_fim_garantia, numero_garantia,
     valor_aquisicao, valor_atual, estado_conservacao, status,
-    responsavel_id, setor_id, localizacao, observacoes, foto_url, specs,
+    responsavel_id, responsavel_nome, setor_id, localizacao, observacoes, foto_url, specs,
   } = req.body;
 
   if (typeof nome !== 'string' || !nome.trim() || typeof categoria !== 'string' || !categoria.trim()) {
     return res.status(400).json({ message: 'Nome e categoria são obrigatórios' });
+  }
+  if (responsavel_nome !== undefined && responsavel_nome !== null &&
+      (typeof responsavel_nome !== 'string' || responsavel_nome.trim().length > 255)) {
+    return res.status(400).json({ message: 'Nome do responsável inválido' });
   }
 
   try {
@@ -104,6 +128,7 @@ router.post('/', async (req: any, res) => {
     const codigoFinal = typeof codigo === 'string' && codigo.trim()
       ? codigo.trim()
       : await proximoCodigo(categoria.trim());
+    const responsavelId = await resolverResponsavelId(responsavel_nome, responsavel_id);
 
     const result = await pool.query(
       `INSERT INTO patrimonios (
@@ -123,7 +148,7 @@ router.post('/', async (req: any, res) => {
         data_compra || null, data_inicio_garantia || null, data_fim_garantia || null,
         numero_garantia || null, access.isAdmin ? valor_aquisicao ?? 0 : 0,
         access.isAdmin ? valor_atual ?? 0 : 0,
-        estado_conservacao || 'Bom', status || 'Em uso', responsavel_id || null,
+        estado_conservacao || 'Bom', status || 'Em uso', responsavelId,
         setor_id || null, localizacao || null, observacoes || null, foto_url || null,
         specs ?? {},
       ]
@@ -174,9 +199,13 @@ router.put('/:id', async (req: any, res) => {
     tag_empresa, fornecedor, data_aquisicao, garantia_ate, data_compra,
     data_inicio_garantia, data_fim_garantia, numero_garantia,
     valor_aquisicao, valor_atual, estado_conservacao, status,
-    responsavel_id, setor_id, localizacao, observacoes, foto_url, specs,
+    responsavel_id, responsavel_nome, setor_id, localizacao, observacoes, foto_url, specs,
   } = req.body;
   const codigoNovo = typeof codigo === 'string' && codigo.trim() ? codigo.trim() : null;
+  if (responsavel_nome !== undefined && responsavel_nome !== null &&
+      (typeof responsavel_nome !== 'string' || responsavel_nome.trim().length > 255)) {
+    return res.status(400).json({ message: 'Nome do responsável inválido' });
+  }
 
   try {
     const access = await getPatrimonioAccess(req.auth);
@@ -193,6 +222,7 @@ router.put('/:id', async (req: any, res) => {
       return res.status(404).json({ message: 'Património não encontrado' });
     }
     const updateScope = patrimonioScope(access, 'p', 28);
+    const responsavelId = await resolverResponsavelId(responsavel_nome, responsavel_id);
     const result = await pool.query(
       `UPDATE patrimonios AS p SET
         codigo = COALESCE($1, codigo), nome = $2, categoria = $3, subcategoria = $4, descricao = $5,
@@ -212,7 +242,7 @@ router.put('/:id', async (req: any, res) => {
         access.isAdmin ? valor_aquisicao ?? 0 : anterior.rows[0].valor_aquisicao,
         access.isAdmin ? valor_atual ?? 0 : anterior.rows[0].valor_atual,
         estado_conservacao || 'Bom', status || 'Em uso',
-        responsavel_id || null, setor_id || null, localizacao || null, observacoes || null,
+        responsavelId, setor_id || null, localizacao || null, observacoes || null,
         foto_url || null, specs ?? {}, id,
         ...updateScope.values,
       ]

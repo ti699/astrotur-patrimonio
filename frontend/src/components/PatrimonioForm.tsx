@@ -6,15 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { CATEGORIAS, ESTADOS, STATUS, categoriaPrefixo, type Categoria } from "@/lib/categorias";
 import { DynamicSpecsFields } from "@/components/DynamicSpecsFields";
 import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Upload, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type Props = {
   initial?: any;
   onSaved: (id: string) => void;
+};
+
+type UsuarioProfile = {
+  id: string;
+  nome: string;
+  email?: string | null;
+  status: string;
 };
 
 export function PatrimonioForm({ initial, onSaved }: Props) {
@@ -26,27 +35,30 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
     data_compra: "", data_inicio_garantia: "", data_fim_garantia: "", numero_garantia: "",
     valor_aquisicao: "", valor_atual: "",
     estado_conservacao: "Bom", status: "Em uso",
-    responsavel_id: null, setor_id: null,
+    responsavel_nome: initial?.responsavel_nome ?? initial?.responsavel?.nome ?? "",
+    setor_id: null,
     localizacao: "", observacoes: "", foto_url: null,
     specs: {},
     ...initial,
   });
   const [setores, setSetores] = useState<any[]>([]);
-  const [responsaveis, setResponsaveis] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioProfile[]>([]);
+  const [responsavelOpen, setResponsavelOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [setoresRes, responsaveisRes] = await Promise.all([
+        const [setoresRes, usuariosRes] = await Promise.all([
           api.get("/setores"),
-          api.get("/responsaveis"),
+          api.get("/admin/users"),
         ]);
         setSetores(setoresRes.data ?? []);
-        setResponsaveis(responsaveisRes.data ?? []);
+        setUsuarios((usuariosRes.data ?? []).filter((usuario: UsuarioProfile) => usuario.status === "active"));
       } catch (err) {
-        console.error("Erro ao carregar setores ou responsáveis:", err);
+        console.error("Erro ao carregar setores ou usuários:", err);
+        toast.error("Erro ao carregar setores ou usuários.");
       }
     })();
   }, []);
@@ -91,7 +103,7 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
         numero_garantia: form.numero_garantia || null,
         estado_conservacao: form.estado_conservacao,
         status: form.status,
-        responsavel_id: form.responsavel_id || null,
+        responsavel_nome: form.responsavel_nome?.trim() || null,
         setor_id: form.setor_id || null,
         localizacao: form.localizacao || null,
         observacoes: form.observacoes || null,
@@ -206,10 +218,46 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
         <Section title="Alocação">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Responsável">
-              <Select value={form.responsavel_id ?? ""} onValueChange={(v) => set("responsavel_id", v || null)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{responsaveis.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}</SelectContent>
-              </Select>
+              <Popover open={responsavelOpen} onOpenChange={setResponsavelOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={responsavelOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {form.responsavel_nome || "Selecione um perfil ou digite um nome"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                  <Command>
+                    <CommandInput
+                      placeholder="Buscar perfil ou digitar nome..."
+                      value={form.responsavel_nome ?? ""}
+                      onValueChange={(value) => set("responsavel_nome", value)}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Nenhum perfil encontrado. O nome digitado será salvo.</CommandEmpty>
+                      {usuarios.map((usuario) => (
+                        <CommandItem
+                          key={usuario.id}
+                          value={`${usuario.nome} ${usuario.email ?? ""}`}
+                          onSelect={() => {
+                            set("responsavel_nome", usuario.nome);
+                            setResponsavelOpen(false);
+                          }}
+                        >
+                          <Check className={`h-4 w-4 ${form.responsavel_nome === usuario.nome ? "opacity-100" : "opacity-0"}`} />
+                          <span>{usuario.nome}</span>
+                          {usuario.email && <span className="ml-auto text-xs text-muted-foreground">{usuario.email}</span>}
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </Field>
             <Field label="Setor / Departamento">
               <Select value={form.setor_id ?? ""} onValueChange={(v) => set("setor_id", v || null)}>
