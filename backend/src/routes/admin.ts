@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import type { PoolClient } from 'pg';
 import { pool } from '../db';
 import { isCorporateEmail } from '../utils/email';
-import { ensurePatrimonioModelosColumn } from '../utils/patrimonioModelos';
 
 const router = Router();
 
@@ -136,14 +136,14 @@ router.delete('/users/:id', async (req: any, res) => {
 
 /* ---------- Configurações da aplicação ---------- */
 const SETTINGS_FIELDS = ['company_name', 'cnpj', 'email', 'phone', 'address', 'website', 'logo_url',
-  'primary_color', 'patrimonio_prefix', 'currency', 'items_per_page', 'dark_mode', 'patrimonio_modelos'];
+  'primary_color', 'patrimonio_prefix', 'currency', 'items_per_page', 'dark_mode'];
 
 router.get('/settings', async (_req, res) => {
   try {
-    await ensurePatrimonioModelosColumn();
     let result = await pool.query('SELECT * FROM app_settings LIMIT 1');
     if (result.rows.length === 0) result = await pool.query('INSERT INTO app_settings DEFAULT VALUES RETURNING *');
-    res.json(result.rows[0]);
+    const modelos = await pool.query('SELECT modelos FROM patrimonio_modelos_config WHERE id = 1');
+    res.json({ ...result.rows[0], patrimonio_modelos: modelos.rows[0]?.modelos ?? [] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Erro ao obter configurações' });
@@ -152,23 +152,55 @@ router.get('/settings', async (_req, res) => {
 
 router.put('/settings', async (req, res) => {
   const fields = SETTINGS_FIELDS.filter((f) => req.body[f] !== undefined);
-  if (fields.length === 0) return res.status(400).json({ message: 'Nada para atualizar' });
-  if (req.body.patrimonio_modelos !== undefined && !isValidPatrimonioModelos(req.body.patrimonio_modelos)) {
+  const hasModelos = req.body.patrimonio_modelos !== undefined;
+  if (fields.length === 0 && !hasModelos) return res.status(400).json({ message: 'Nada para atualizar' });
+  if (hasModelos && !isValidPatrimonioModelos(req.body.patrimonio_modelos)) {
     return res.status(400).json({ message: 'Lista de modelos padrão inválida' });
   }
+  let client: PoolClient | undefined;
   try {
-    await ensurePatrimonioModelosColumn();
-    const current = await pool.query('SELECT id FROM app_settings LIMIT 1');
-    const id = current.rows.length ? current.rows[0].id : (await pool.query('INSERT INTO app_settings DEFAULT VALUES RETURNING id')).rows[0].id;
-    const sets = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
-    const result = await pool.query(
-      `UPDATE app_settings SET ${sets} WHERE id = $${fields.length + 1} RETURNING *`,
-      [...fields.map((f) => req.body[f]), id]
-    );
-    res.json(result.rows[0]);
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    let settings: Record<string, unknown> = {};
+    if (fields.length > 0) {
+      await client.query("SELECT pg_advisory_xact_lock(8432, hashtext('app-settings'))");
+      const current = await client.query('SELECT id FROM app_settings ORDER BY id LIMIT 1 FOR UPDATE');
+      const id = current.rows.length
+        ? current.rows[0].id
+        : (await client.query('INSERT INTO app_settings DEFAULT VALUES RETURNING id')).rows[0].id;
+      const sets = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+      const result = await client.query(
+        `UPDATE app_settings SET ${sets} WHERE id = $${fields.length + 1} RETURNING *`,
+        [...fields.map((field) => req.body[field]), id]
+      );
+      settings = result.rows[0];
+    }
+
+    let patrimonioModelos: unknown;
+    if (hasModelos) {
+      const result = await client.query(
+        `INSERT INTO patrimonio_modelos_config (id, modelos, updated_at)
+         VALUES (1, $1::jsonb, NOW())
+         ON CONFLICT (id) DO UPDATE
+         SET modelos = EXCLUDED.modelos, updated_at = NOW()
+         RETURNING modelos`,
+        [JSON.stringify(req.body.patrimonio_modelos)]
+      );
+      patrimonioModelos = result.rows[0].modelos;
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      ...settings,
+      ...(hasModelos ? { patrimonio_modelos: patrimonioModelos } : {}),
+    });
   } catch (error) {
+    if (client) await client.query('ROLLBACK');
     console.error(error);
     res.status(500).json({ message: 'Erro ao guardar configurações' });
+  } finally {
+    client?.release();
   }
 });
 
