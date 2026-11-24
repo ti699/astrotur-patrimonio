@@ -90,6 +90,7 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
 
     setForm((current) => ({
       ...current,
+      nome: preset.nome,
       categoria: preset.categoria,
       subcategoria: preset.subcategoria,
       marca: preset.marca,
@@ -202,7 +203,7 @@ export function PatrimonioForm({ initial, onSaved }: Props) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Aplicar um modelo preenche categoria, marca, modelo e especificações comuns; os demais dados da máquina são preservados.
+            Aplicar um modelo preenche o nome do item, categoria, marca, modelo e especificações comuns. Todos continuam editáveis; os dados únicos da máquina são preservados.
           </p>
         </Section>
 
